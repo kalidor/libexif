@@ -42,8 +42,7 @@ module REXIF
   class JPG
     @thumbnail = false
     def initialize(filename)
-      @filename = filename
-      init_var()
+      init_var(filename)
       dputs "Analysing: %s" % filename
       File.open(filename, "rb") do |io|
         @io = io
@@ -62,6 +61,9 @@ module REXIF
     def dputs(str)
       puts "[+] %s" % str if $DEBUG
     end
+    def dprint(str)
+      print "[+] %s" % str if $DEBUG
+    end
     def eputs(str)
       puts "[-] %s" % str
     end
@@ -70,10 +72,10 @@ module REXIF
       puts "There's no method called #{m} here."
     end
 
-    def init_var()
+    def init_var(filename)
       @@DATA ||= Array.new
-      @header ||= nil
-      @endianess ||= :little
+      @filename = filename
+      @endianess ||= nil
       @tiff_header_offset ||= nil
     end
 
@@ -91,6 +93,9 @@ module REXIF
               look_for += 1
               endian << l
               if endian.length == LITTLE_ENDIAN_.length
+                dputs "Endianess: "
+                endian.each{|c| dprint "0x"+ c.unpack('H*').first+" "}
+                dputs ""
                 found = true
                 break
               end
@@ -104,11 +109,6 @@ module REXIF
         eputs "Cannot detect endianess. Exiting..."
         exit(2)
       end
-      if $DEBUG
-        print "Endianess: "
-        endian.each{|c| print "0x"+ c.unpack('H*').first+" "}
-        puts ""
-      end
       case endian[0..1].join
       when STR_BIG_ENDIAN #MM big-endian
         @endianess = :big
@@ -121,14 +121,6 @@ module REXIF
       # we compute the tiff_header position (-4) (endianess x 2 + identifier)
       # in order to seek from here to the IFD0 offset
       @tiff_header_offset = @io.pos - 4
-      # we get the IFD0_ENTRIES offset by reading the next 4 bytes taking care
-      # to the endianess
-      tmp_offset = ""
-      4.times{tmp_offset << @io.readchar}
-      tmp_offset = tmp_offset.to_num(@endianess)
-      # and seek to the target offset given by the 4 bytes after tiff header
-      @io.seek(@tiff_header_offset + tmp_offset, IO::SEEK_SET)
-      dputs "IFD0_entries offset: %s" % tmp_offset.to_s(16)
     end
 
     # Get the count of IFD entries (rRead and convert 2 bytes)
@@ -140,16 +132,27 @@ module REXIF
       return expected_entries
     end
 
+    def seek_IFD0_entries
+      # we get the IFD0_ENTRIES offset by reading the next 4 bytes taking care
+      # to the endianess
+      tmp_offset = ""
+      4.times{tmp_offset << @io.readchar}
+      tmp_offset = tmp_offset.to_num(@endianess)
+      dputs "IFD0_entries offset: %s" % tmp_offset.to_s(16)
+      # and seek to the target offset given by the 4 bytes after tiff header
+      @io.seek(@tiff_header_offset + tmp_offset, IO::SEEK_SET)
+    end
+
     # Analyze the file:
     # - detect endianess
     # - get the offset data
     # - get the value data
     # - get raw image data if thumbnail is detected
     def analyze
-      if not @header
+      if not @endianess
         detect_endianess()
         dputs "Endianess detected: " + @endianess.to_s
-        @header = true
+        seek_IFD0_entries()
       end
 
       @@TAG = Hash.new
