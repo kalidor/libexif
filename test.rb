@@ -4,7 +4,7 @@ require 'libEXIF'
 if ARGV.length > 0
   filename = ARGV[0].dup
 end
-io = REXIF::JPG.new(filename)
+io = REXIF::IMG.new(filename)
 puts "Available methods relative to JPG library:"
 puts io.help
 puts

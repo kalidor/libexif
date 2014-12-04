@@ -39,7 +39,7 @@ end
 
 # REXIF module
 module REXIF
-  class JPG
+  class IMG
     @thumbnail = false
     def initialize(filename)
       init_var(filename)
@@ -47,7 +47,7 @@ module REXIF
       File.open(filename, "rb") do |io|
         @io = io
         analyze()
-        init_thumbnail()
+        handle_thumbnail()
         set_functions()
       end
     end
@@ -181,15 +181,15 @@ module REXIF
       end
     end
 
-    # Define function to extract thumbnail if available
-    def init_thumbnail
-      # We need to save the content, because the file will be close
-      # after the analysis
+    # Detect if thumbnila has been found and define function to extract
+    # thumbnail if available
+    def handle_thumbnail
       @@DATA.each do |c|
         if c.has_key?("ThumbnailOffset")
           @thumbnail = true
           # dynamically create method to extract thumbnail instead keeping thumbnail data in memory
           # path: nil or output directory
+          # todo: if ext is given...
           def extract_thumbnail(path=nil)
             path ||= File.dirname(@filename)
             thumbname = File.join(path, "%s_#{File.basename(@filename)}" % Time.now.strftime("%Y-%m-%d_%H%M%S"))
