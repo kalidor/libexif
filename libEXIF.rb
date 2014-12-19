@@ -121,6 +121,11 @@ module REXIF
       # we compute the tiff_header position (-4) (endianess x 2 + identifier)
       # in order to seek from here to the IFD0 offset
       @tiff_header_offset = @io.pos - 4
+      # we get the IFD0_ENTRIES offset by reading the next 4 bytes taking care
+      # to the endianess
+      tmp = ""
+      4.times{tmp << @io.readchar}
+      @first_ifd_offset = tmp.to_num(@endianess)
     end
 
     # Get the count of IFD entries (rRead and convert 2 bytes)
@@ -133,14 +138,9 @@ module REXIF
     end
 
     def seek_IFD0_entries
-      # we get the IFD0_ENTRIES offset by reading the next 4 bytes taking care
-      # to the endianess
-      tmp_offset = ""
-      4.times{tmp_offset << @io.readchar}
-      tmp_offset = tmp_offset.to_num(@endianess)
-      dputs "IFD0_entries offset: %s" % tmp_offset.to_s(16)
+      dputs "IFD0_entries offset: %s" % @first_ifd_offset.to_s(16)
       # and seek to the target offset given by the 4 bytes after tiff header
-      @io.seek(@tiff_header_offset + tmp_offset, IO::SEEK_SET)
+      @io.seek(@tiff_header_offset + @first_ifd_offset, IO::SEEK_SET)
     end
 
     # Analyze the file:
