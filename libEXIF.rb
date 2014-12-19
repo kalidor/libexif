@@ -229,8 +229,9 @@ module REXIF
             index -= 1
           end
           c.each do |k, v|
-            methods << (txt % index) + k
-            define_method ((txt % index) + k).to_sym do
+            method = (txt % index) + k
+            methods << method
+            define_method method.to_sym do
               v[:value]
             end
           end
