@@ -40,7 +40,6 @@ end
 # REXIF module
 module REXIF
   class IMG
-    @thumbnail = false
     def initialize(filename)
       init_var(filename)
       dputs "Analysing: %s" % filename
@@ -59,7 +58,7 @@ module REXIF
       puts "[D] %s" % str if $DDEBUG
     end
     def dputs(str)
-      puts "[+] %s" % str if $DEBUG
+      puts "[+] %s" % str
     end
     def dprint(str)
       print "[+] %s" % str if $DEBUG
@@ -76,7 +75,9 @@ module REXIF
       @@DATA ||= Array.new
       @filename = filename
       @endianess ||= nil
-      @tiff_header_offset ||= nil
+      @TIFF_header_offset ||= nil
+      @io = nil
+      @thumbnail = false
     end
 
     def detect_endianess
@@ -93,9 +94,6 @@ module REXIF
               look_for += 1
               endian << l
               if endian.length == LITTLE_ENDIAN_.length
-                dputs "Endianess: "
-                endian.each{|c| dprint "0x"+ c.unpack('H*').first+" "}
-                dputs ""
                 found = true
                 break
               end
@@ -120,7 +118,7 @@ module REXIF
       @io.seek( -tmp.length, IO::SEEK_CUR) if tmp.length != 0
       # we compute the tiff_header position (-4) (endianess x 2 + identifier)
       # in order to seek from here to the IFD0 offset
-      @tiff_header_offset = @io.pos - 4
+      @TIFF_header_offset = @io.pos - 4
       # we get the IFD0_ENTRIES offset by reading the next 4 bytes taking care
       # to the endianess
       tmp = ""
@@ -140,7 +138,7 @@ module REXIF
     def seek_IFD0_entries
       dputs "IFD0_entries offset: %s" % @first_ifd_offset.to_s(16)
       # and seek to the target offset given by the 4 bytes after tiff header
-      @io.seek(@tiff_header_offset + @first_ifd_offset, IO::SEEK_SET)
+      @io.seek(@TIFF_header_offset + @first_ifd_offset, IO::SEEK_SET)
     end
 
     # Analyze the file:
@@ -151,7 +149,7 @@ module REXIF
     def analyze
       if not @endianess
         detect_endianess()
-        dputs "Endianess detected: " + @endianess.to_s
+        dputs "Endianess: " + @endianess.to_s
         seek_IFD0_entries()
       end
 
@@ -164,8 +162,8 @@ module REXIF
       next_IFD = next_IFD.to_num(@endianess)
       i = 1
       while next_IFD != 0
-        dputs " -- Jumping to the next hop --"
-        @io.seek(@tiff_header_offset + next_IFD , IO::SEEK_SET)
+        ddputs " -- Jumping to the next hop --"
+        @io.seek(@TIFF_header_offset + next_IFD , IO::SEEK_SET)
         next_IFD, @@DATA[i] = get_offset(expected_entries?, @@TAG)
         next_IFD = next_IFD.to_num(@endianess)
         i += 1
@@ -173,7 +171,7 @@ module REXIF
       # Usually the ExifOffset is present in the first part
       if @@DATA[0].has_key? "ExifOffset"
         # if yes, seek to the given offset
-        @io.seek(@tiff_header_offset + @@DATA[0]["ExifOffset"][:value], IO::SEEK_SET)
+        @io.seek(@TIFF_header_offset + @@DATA[0]["ExifOffset"][:value], IO::SEEK_SET)
         dev_null, @@DATA[i] = get_offset(expected_entries?, @@TAG)
       end
       @@DATA.each do |c|
@@ -197,7 +195,7 @@ module REXIF
             thumb_offset = c.first["ThumbnailOffset"][:value]
             thumb_length = c.first["ThumbnailLength"][:value]
             File.open(@filename, "rb") do |io|
-              io.seek(@tiff_header_offset + thumb_offset, IO::SEEK_SET)
+              io.seek(@TIFF_header_offset + thumb_offset, IO::SEEK_SET)
               io_thumb = File.open(thumbname, "wb")
               thumb_length.times {
                 io_thumb << io.readchar
@@ -222,14 +220,14 @@ module REXIF
       self.class.instance_eval do
         methods = []
         @@DATA.each_with_index do |c, index|
-          txt = "IFD%d"
+          txt = "IFD"
           if index == 1
             txt = "EXIF"
           elsif index > 1
             index -= 1
           end
           c.each do |k, v|
-            method = (txt % index) + k
+            method = txt + index.to_s + k
             methods << method
             define_method method.to_sym do
               v[:value]
@@ -252,7 +250,7 @@ module REXIF
         id, type, size, _data = readblock()
         key = entries.find{|k, v| v[:id] == id}
         if not key
-          dputs "Don't know this id '%s'. Next" % id.to_s(16)
+          ddputs "Don't know this id '%s'. Next" % id.to_s(16)
           next
         end
         key = key[0]
@@ -277,15 +275,15 @@ module REXIF
             # _data is the direct value
             _data = _data.to_num(@endianess)
           end
-          dputs "%s: Direct value detected" % _data
+          ddputs "%s: Direct value detected" % _data
           data[key][:value] = (entries[key].has_key?(:exec)) ? entries[key][:exec].call(_data) : _data
         else
         # _data is a pointer to the value
-          dputs "Get Pointer: %s" % _data.unpack("H*").first.to_s
+          ddputs "Get Pointer: %s" % _data.unpack("H*").first.to_s
           _data = _data.to_num(@endianess)
           data[key][:pointer] = _data
         end
-        dputs "%s : (type: %s, size: %s) 0x%s" % [key, type, size, _data.to_hexa]
+        ddputs "%s : (type: %s, size: %s) 0x%s" % [key, type, size, _data.to_hexa]
       end
       return @io.readchar<<@io.readchar<<@io.readchar<<@io.readchar, data
     end
@@ -299,7 +297,7 @@ module REXIF
           next
         end
         if @io.pos != entries[k][:pointer]
-          @io.seek(@tiff_header_offset + entries[k][:pointer] - @io.pos, IO::SEEK_CUR)
+          @io.seek(@TIFF_header_offset + entries[k][:pointer] - @io.pos, IO::SEEK_CUR)
         end
         tmp = ""
         ddputs "Position: %d" % @io.pos
