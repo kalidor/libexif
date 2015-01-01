@@ -46,7 +46,7 @@ module REXIF
       File.open(filename, "rb") do |io|
         @io = io
         analyze()
-        handle_thumbnail()
+        handle_embedded()
         set_functions()
       end
     end
@@ -78,6 +78,7 @@ module REXIF
       @TIFF_header_offset ||= nil
       @io = nil
       @thumbnail = false
+      @preview = false
     end
 
     def detect_endianess
@@ -179,37 +180,50 @@ module REXIF
       end
     end
 
-    # Detect if thumbnila has been found and define function to extract
+    # Detect if thumbnail has been found and define function to extract
     # thumbnail if available
-    def handle_thumbnail
+    def handle_embedded
+      data = [["ThumbnailOffset","ThumbnailLength"],["PreviewImageStart","PreviewImageLength"]]
+      data.map{|offset, length|
       @@DATA.each do |c|
-        if c.has_key?("ThumbnailOffset")
-          @thumbnail = true
-          # dynamically create method to extract thumbnail instead keeping thumbnail data in memory
-          # path: nil or output directory
+        if c.has_key?(offset)
+          kind = offset.match(/([[:upper:]]{1}[[:lower:]]*)/).captures.first.downcase
+          instance_variable_set("@#{kind}", true)
+          # dynamically create method to extract preview/thumbnail
           # todo: if ext is given...
-          def extract_thumbnail(path=nil)
-            path ||= File.dirname(@filename)
-            thumbname = File.join(path, "%s_#{File.basename(@filename)}" % Time.now.strftime("%Y-%m-%d_%H%M%S"))
-            c = @@DATA.select{|item| item.has_key?("ThumbnailOffset")}
-            thumb_offset = c.first["ThumbnailOffset"][:value]
-            thumb_length = c.first["ThumbnailLength"][:value]
-            File.open(@filename, "rb") do |io|
-              io.seek(@TIFF_header_offset + thumb_offset, IO::SEEK_SET)
-              io_thumb = File.open(thumbname, "wb")
-              thumb_length.times {
-                io_thumb << io.readchar
-              }
+          self.class.instance_eval {
+            tmp = "extract_%s" % kind
+            define_method tmp.to_sym do |path=nil|
+            #def extract_thumbnail(path=nil)
+              path ||= File.dirname(@filename)
+              extract_name = File.basename(@filename)
+              extract_name.gsub!(File.extname(extract_name), ".JPEG")
+              extract_name = File.join(path, "#{kind}_%s_#{extract_name}" % Time.now.strftime("%Y-%m-%d_%H%M%S"))
+              c = @@DATA.select{|item| item.has_key?(offset)}
+              _offset = c.first[offset][:value]
+              _length = c.first[length][:value]
+              File.open(@filename, "rb") do |io|
+                io.seek(@TIFF_header_offset + _offset, IO::SEEK_SET)
+                io_extract = File.open(extract_name, "wb")
+                _length.times {
+                  io_extract << io.readchar
+                }
+              end
+              extract_name
             end
-            thumbname
-          end
+          }
         end
       end
+      }
     end
 
     # self explained
     def has_thumbnail?
       @thumbnail
+    end
+
+    def has_preview?
+      @preview
     end
 
 

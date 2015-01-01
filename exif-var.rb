@@ -173,7 +173,7 @@ EXIF["LightSource"]= {:id => 0x9208, :exec => proc{|v|
 EXIF["Flash"]= {:id => 0x9209, :exec => FLASH}
 EXIF["FocalLength"]= {:id => 0x920a}
 EXIF["SubjectArea"] = {:id => 0x9214}
-#EXIF["MakerNote"]= 0x927c
+EXIF["MakerNote"]= {:id => 0x927c}
 EXIF["UserComment"]= {:id => 0x9286}
 EXIF["SubSecTime"]= {:id => 0x9290}
 EXIF["SubSecTimeOriginal"]= {:id => 0x9291}

@@ -94,10 +94,9 @@ IFD["PhotometricInterpretation"] = {:id => 0x0106}
 IFD["ImageDescription"] = {:id => 0x010e}
 IFD["Make"] = {:id => 0x010f}
 IFD["Model"] = {:id => 0x0110}
-IFD["StripOffsets"] = {:id => 0x0111}
+IFD["PreviewImageStart"] = {:id => 0x0111}
 IFD["SamplesPerPixel"] = {:id => 0x0115}
 IFD["RowsPerStrip"] = {:id => 0x0116}
-IFD["StripByteConunts"] = {:id => 0x0117}
 IFD["Orientation"] = {:id => 0x0112, :exec => proc{|v|
   case v
   when 1
@@ -119,6 +118,7 @@ IFD["Orientation"] = {:id => 0x0112, :exec => proc{|v|
   end
   }
 }
+IFD["PreviewImageLength"] = {:id => 0x0117}
 IFD["XResolution"] = {:id => 0x011a}
 IFD["YResolution"] = {:id => 0x011b}
 IFD["PlanarConfiguration"] = {:id => 0x011c, :exec => proc{|v|
