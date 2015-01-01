@@ -192,9 +192,7 @@ module REXIF
           # dynamically create method to extract preview/thumbnail
           # todo: if ext is given...
           self.class.instance_eval {
-            tmp = "extract_%s" % kind
-            define_method tmp.to_sym do |path=nil|
-            #def extract_thumbnail(path=nil)
+            define_method ("extract_%s" % kind).to_sym do |path=nil|
               path ||= File.dirname(@filename)
               extract_name = File.basename(@filename)
               extract_name.gsub!(File.extname(extract_name), ".JPEG")
