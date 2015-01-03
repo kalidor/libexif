@@ -21,7 +21,7 @@ end
 if io.has_preview?
   puts "[+] extract_preview() available."
   begin
-    preview = io.extract_preview
+    preview = io.extract_preview('./')
     puts "[+] Extracted : %s" % preview
   end
 end

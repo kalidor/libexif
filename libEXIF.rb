@@ -190,12 +190,11 @@ module REXIF
           kind = offset.match(/([[:upper:]]{1}[[:lower:]]*)/).captures.first.downcase
           instance_variable_set("@#{kind}", true)
           # dynamically create method to extract preview/thumbnail
-          # todo: if ext is given...
           self.class.instance_eval {
             define_method ("extract_%s" % kind).to_sym do |path=nil|
               path ||= File.dirname(@filename)
               extract_name = File.basename(@filename)
-              extract_name.gsub!(File.extname(extract_name), ".JPEG")
+              extract_name.gsub!(File.extname(extract_name), ".jpeg")
               extract_name = File.join(path, "#{kind}_%s_#{extract_name}" % Time.now.strftime("%Y-%m-%d_%H%M%S"))
               c = @@DATA.select{|item| item.has_key?(offset)}
               _offset = c.first[offset][:value]
