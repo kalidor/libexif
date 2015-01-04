@@ -9,25 +9,16 @@ require 'thumb-var'
 require 'ifd-var'
 require 'time'
 
-$DEBUG = false
 $DDEBUG = false
 
 # Overload String class to add helpful stuff
 class String
-  def to_id(endianess = false)
-    if endianess # big endian
-      self[0..1].unpack('H*').join.hex
-    else # little endian
-      self[0..1].reverse.unpack('H*').join.hex
-    end
-  end
-  def to_size; self.unpack('H*').join.hex end
-  def to_type; to_size end
-  def to_num(endianess = :little)
-    if endianess == :little
-      self.reverse.unpack('H*').join.to_i(16)
-    else
-      self.unpack('H*').join.to_i(16)
+  def convert(endianess) # endianess convertion
+    case endianess
+    when :big
+      self.unpack("H*").join.hex
+    when :little
+      self.reverse.unpack("H*").join.hex
     end
   end
 end
@@ -108,11 +99,14 @@ module REXIF
         eputs "Cannot detect endianess. Exiting..."
         exit(2)
       end
-      case endian[0..1].join
-      when STR_BIG_ENDIAN #MM big-endian
+      case endian.join
+      when BIG_ENDIAN_.map{|c| c.chr}.join #MM
         @endianess = :big
-      when STR_LITTLE_ENDIAN #II little-endian
+      when LITTLE_ENDIAN_.map{|c| c.chr}.join #II
         @endianess = :little
+      else
+        eputs "Unrecognized endianess. Exiting"
+        exit(2)
       end
       # move back to the previous position in case we read more bytes than
       # expected
@@ -124,14 +118,14 @@ module REXIF
       # to the endianess
       tmp = ""
       4.times{tmp << @io.readchar}
-      @first_ifd_offset = tmp.to_num(@endianess)
+      @first_ifd_offset = tmp.convert(@endianess)
     end
 
     # Get the count of IFD entries (rRead and convert 2 bytes)
     def expected_entries?
-      expected_size = Array.new
+      expected_size = ""
       2.times{expected_size << @io.readchar}
-      expected_entries = expected_size.join.to_num(@endianess)
+      expected_entries = expected_size.convert(@endianess)
       dputs "Expected %d IFD entries" % expected_entries
       return expected_entries
     end
@@ -160,13 +154,13 @@ module REXIF
       # need to separated IFD from the two others because
       # JpegIFOffset and ThumbnailOffset have the same ID...
       next_IFD, @@DATA[0] = get_offset(expected_entries?, IFD)
-      next_IFD = next_IFD.to_num(@endianess)
+      next_IFD = next_IFD.convert(@endianess)
       i = 1
       while next_IFD != 0
         ddputs " -- Jumping to the next hop --"
         @io.seek(@TIFF_header_offset + next_IFD , IO::SEEK_SET)
         next_IFD, @@DATA[i] = get_offset(expected_entries?, @@TAG)
-        next_IFD = next_IFD.to_num(@endianess)
+        next_IFD = next_IFD.convert(@endianess)
         i += 1
       end
       # Usually the ExifOffset is present in the first part
@@ -187,6 +181,8 @@ module REXIF
       data.map{|offset, length|
       @@DATA.each do |c|
         if c.has_key?(offset)
+          # ThumbnailOffset -> thumbnail
+          # PreviewImageStart -> preview
           kind = offset.match(/([[:upper:]]{1}[[:lower:]]*)/).captures.first.downcase
           instance_variable_set("@#{kind}", true)
           # dynamically create method to extract preview/thumbnail
@@ -284,14 +280,14 @@ module REXIF
             _data = ret.to_i
           else
             # _data is the direct value
-            _data = _data.to_num(@endianess)
+            _data = _data.convert(@endianess)
           end
           ddputs "%s: Direct value detected" % _data
           data[key][:value] = (entries[key].has_key?(:exec)) ? entries[key][:exec].call(_data) : _data
         else
         # _data is a pointer to the value
           ddputs "Get Pointer: %s" % _data.unpack("H*").first.to_s
-          _data = _data.to_num(@endianess)
+          _data = _data.convert(@endianess)
           data[key][:pointer] = _data
         end
         ddputs "%s : (type: %s, size: %s) 0x%s" % [key, type, size, _data.to_hexa]
@@ -333,8 +329,8 @@ module REXIF
             denum.each_char{|c| print c.unpack('H*')}
             puts ""
           end
-          r_f = Rational(num.to_num(@endianess), denum.to_num(@endianess)).to_f
-          r = Rational(num.to_num(@endianess), denum.to_num(@endianess))
+          r_f = Rational(num.convert(@endianess), denum.convert(@endianess)).to_f
+          r = Rational(num.convert(@endianess), denum.convert(@endianess))
           entries[k][:value] = "%0.2f (%s)" % [r_f, r]
         else
           eputs "%s Unknown type" % entries[k][:type]
@@ -352,13 +348,20 @@ module REXIF
         puts "Current block:"
         block.each_char{|c| print c.unpack('H*')}
         puts ""
+        puts block.unpack("H*")
       end
 
-      # if big endian, we pass true to to_id function
-      return block[0..1].to_id(@endianess == :big ? true : false),
-      block[ENDIAN_STRUCTURE[@endianess][:type]].to_type,
-      block[ENDIAN_STRUCTURE[@endianess][:size]].to_size,
-      block[8..11]
+      # Exif2.2:
+      # Each of the 12-byte field Interoperability consists of the following
+      # four elements respectively:
+      # Bytes 0-1 Tag
+      # Bytes 2-3 Type
+      # Bytes 4-7 Count
+      # Bytes 8-11 Value Offset
+      return block[0..1].convert(@endianess),
+        block[2..3].convert(@endianess),
+        block[4..7].convert(@endianess),
+        block[8..11]
     end
   end
 end

@@ -1,25 +1,9 @@
 # (c) 2014-2015 G. Charbonneau
 # Published under the terms of WtfPLv2
 
-DEBUG = nil
-
 EXIFHEADER = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00]
 BIG_ENDIAN_ = [0x4d, 0x4d, 0x00, 0x2a]
 LITTLE_ENDIAN_ = [0x49, 0x49, 0x2a, 0x00]
-ENDIANNESS_LENGTH = 8
-STR_BIG_ENDIAN = "MM"
-STR_LITTLE_ENDIAN = "II"
-
-ENDIAN_STRUCTURE = {
-  :big => {
-    :type => 3,
-    :size => 7
-  },
-  :little => {
-    :type => 2,
-    :size => 4
-  }
- }
 
 ASCII = {:id => 0x02, :unit => 1}
 INT16U = {:id => 0x03, :unit => 2}
