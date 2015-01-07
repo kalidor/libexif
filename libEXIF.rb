@@ -13,12 +13,20 @@ $DDEBUG = false
 
 # Overload String class to add helpful stuff
 class String
+  def to_num(endianess) # endianess convertion
+    case endianess
+    when :big
+      self.unpack("n*").join.hex
+    when :little
+      self.unpack("v*").first
+    end
+  end
   def convert(endianess) # endianess convertion
     case endianess
     when :big
-      self.unpack("H*").join.hex
+      self.unpack("N*").join.hex
     when :little
-      self.reverse.unpack("H*").join.hex
+      self.unpack("V*").first
     end
   end
 end
@@ -118,14 +126,14 @@ module REXIF
       # to the endianess
       tmp = ""
       4.times{tmp << @io.readchar}
-      @first_ifd_offset = tmp.convert(@endianess)
+      @first_ifd_offset = tmp.to_num(@endianess)
     end
 
-    # Get the count of IFD entries (rRead and convert 2 bytes)
+    # Get the count of IFD entries (Read and convert 2 bytes)
     def expected_entries?
       expected_size = ""
       2.times{expected_size << @io.readchar}
-      expected_entries = expected_size.convert(@endianess)
+      expected_entries = expected_size.to_num(@endianess)
       dputs "Expected %d IFD entries" % expected_entries
       return expected_entries
     end
@@ -154,13 +162,13 @@ module REXIF
       # need to separated IFD from the two others because
       # JpegIFOffset and ThumbnailOffset have the same ID...
       next_IFD, @@DATA[0] = get_offset(expected_entries?, IFD)
-      next_IFD = next_IFD.convert(@endianess)
+      next_IFD = next_IFD.to_num(@endianess)
       i = 1
       while next_IFD != 0
         ddputs " -- Jumping to the next hop --"
         @io.seek(@TIFF_header_offset + next_IFD , IO::SEEK_SET)
         next_IFD, @@DATA[i] = get_offset(expected_entries?, @@TAG)
-        next_IFD = next_IFD.convert(@endianess)
+        next_IFD = next_IFD.to_num(@endianess)
         i += 1
       end
       # Usually the ExifOffset is present in the first part
@@ -274,6 +282,8 @@ module REXIF
             _data = _data.unpack('N*').first.to_i if @endianess == :big
           when RATIONAL64U[:id]
             _data = _data.unpack('Q*').first.to_i
+          when RATIONAL64S[:id]
+            _data = _data.unpack('q*').first.to_i
           when ASCII[:id]
             ret = ""
             _data.each_byte{|c| ret << c.chr }
@@ -287,7 +297,7 @@ module REXIF
         else
         # _data is a pointer to the value
           ddputs "Get Pointer: %s" % _data.unpack("H*").first.to_s
-          _data = _data.convert(@endianess)
+          _data = _data.to_num(@endianess)
           data[key][:pointer] = _data
         end
         ddputs "%s : (type: %s, size: %s) 0x%s" % [key, type, size, _data.to_hexa]
@@ -298,7 +308,6 @@ module REXIF
     # Read and convert info at the offset (see :pointer)
     # Depends on the previously detected endianess
     def get_values(entries)
-      entries.keys.each{|c| dputs c}
       entries.each do |k, v|
         if not entries[k][:pointer]
           next
@@ -312,7 +321,6 @@ module REXIF
         when ASCII[:id]
           entries[k][:size].times{tmp << @io.readchar}
           entries[k][:value] = tmp.strip
-          dputs tmp
         when INT16U[:id] # direct value, not used here
         when INT32U[:id] # direct value, not used here
         when UNDEF[:id] # EXIF version, direct value
@@ -324,14 +332,24 @@ module REXIF
             4.times{denum << @io.readchar}
           }
           if $DDEBUG
-            num.each_char{|c| print c.unpack('H*')}
+            num.unpack("H*").first.scan(/../).map{|c| print "\\x"+c}
             puts ""
-            denum.each_char{|c| print c.unpack('H*')}
+            denum.unpack("H*").first.scan(/../).map{|c| print "\\x"+c}
             puts ""
           end
-          r_f = Rational(num.convert(@endianess), denum.convert(@endianess)).to_f
-          r = Rational(num.convert(@endianess), denum.convert(@endianess))
-          entries[k][:value] = "%0.2f (%s)" % [r_f, r]
+          case entries[k][:size]
+          when 1
+            r_f = Rational(num.convert(@endianess), denum.convert(@endianess)).to_f
+            r = r_f.to_i
+            entries[k][:value] = "%0.2f (%s)" % [r_f, r]
+          else
+            lensSpec = num.unpack("L*")
+            if lensSpec[0] == lensSpec[1]
+              entries[k][:value] = "%dmm F%d-%d" % lensSpec
+            else
+              entries[k][:value] = "%d-%dmm F%d-%d" % lensSpec
+            end
+          end
         else
           eputs "%s Unknown type" % entries[k][:type]
         end
@@ -346,9 +364,8 @@ module REXIF
       size.times{block << @io.readchar}
       if $DDEBUG
         puts "Current block:"
-        block.each_char{|c| print c.unpack('H*')}
+        block.unpack("H*").first.scan(/../).map{|c| print "\\x"+c}
         puts ""
-        puts block.unpack("H*")
       end
 
       # Exif2.2:
@@ -358,9 +375,9 @@ module REXIF
       # Bytes 2-3 Type
       # Bytes 4-7 Count
       # Bytes 8-11 Value Offset
-      return block[0..1].convert(@endianess),
-        block[2..3].convert(@endianess),
-        block[4..7].convert(@endianess),
+      return block[0..1].to_num(@endianess),
+        block[2..3].to_num(@endianess),
+        block[4..7].to_num(@endianess),
         block[8..11]
     end
   end
