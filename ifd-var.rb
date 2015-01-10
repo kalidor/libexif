@@ -147,8 +147,8 @@ IFD["ModifyDate"] = {:id => 0x0132}
 IFD["Artist"] = {:id => 0x013b}
 IFD["WhitePoint"] = {:id => 0x013e}
 IFD["PrimaryChromaticities"] = {:id => 0x013f}
-IFD["JpegIFOffset"] = {:id => 0x0201}
-IFD["JpegIFByteCount"] = {:id => 0x0211}
+IFD["ThumbnailOffset"] = {:id => 0x0201}
+IFD["ThumbnailLength"] = {:id => 0x0202}
 IFD["YCbCrCoefficients"] = {:id => 0x0211}
 IFD["YCbCrPositioning"] = {:id => 0x0213, :exec => proc{|v|
   case v

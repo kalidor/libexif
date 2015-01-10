@@ -5,7 +5,6 @@
 $LOAD_PATH << "."
 require 'flash-var'
 require 'exif-var'
-require 'thumb-var'
 require 'ifd-var'
 require 'time'
 
@@ -156,18 +155,15 @@ module REXIF
         seek_IFD0_entries()
       end
 
-      @@TAG = Hash.new
-      @@TAG.merge!(EXIF)
-      @@TAG.merge!(THUMBNAIL)
-      # need to separated IFD from the two others because
-      # JpegIFOffset and ThumbnailOffset have the same ID...
       next_IFD, @@DATA[0] = get_offset(expected_entries?, IFD)
       next_IFD = next_IFD.to_num(@endianess)
       i = 1
+      # Each IFD (IFD0 to IFD3) has potential pointer to the next one
+      # last one is 0x0000
       while next_IFD != 0
         ddputs " -- Jumping to the next hop --"
         @io.seek(@TIFF_header_offset + next_IFD , IO::SEEK_SET)
-        next_IFD, @@DATA[i] = get_offset(expected_entries?, @@TAG)
+        next_IFD, @@DATA[i] = get_offset(expected_entries?, IFD)
         next_IFD = next_IFD.to_num(@endianess)
         i += 1
       end
@@ -175,8 +171,9 @@ module REXIF
       if @@DATA[0].has_key? "ExifOffset"
         # if yes, seek to the given offset
         @io.seek(@TIFF_header_offset + @@DATA[0]["ExifOffset"][:value], IO::SEEK_SET)
-        dev_null, @@DATA[i] = get_offset(expected_entries?, @@TAG)
+        next_IFD, @@DATA[i] = get_offset(expected_entries?, EXIF)
       end
+
       @@DATA.each do |c|
         get_values(c)
       end
@@ -187,34 +184,46 @@ module REXIF
     def handle_embedded
       data = [["ThumbnailOffset","ThumbnailLength"],["PreviewImageStart","PreviewImageLength"]]
       data.map{|offset, length|
-      @@DATA.each do |c|
-        if c.has_key?(offset)
-          # ThumbnailOffset -> thumbnail
-          # PreviewImageStart -> preview
-          kind = offset.match(/([[:upper:]]{1}[[:lower:]]*)/).captures.first.downcase
-          instance_variable_set("@#{kind}", true)
-          # dynamically create method to extract preview/thumbnail
-          self.class.instance_eval {
-            define_method ("extract_%s" % kind).to_sym do |path=nil|
-              path ||= File.dirname(@filename)
-              extract_name = File.basename(@filename)
-              extract_name.gsub!(File.extname(extract_name), ".jpeg")
-              extract_name = File.join(path, "#{kind}_%s_#{extract_name}" % Time.now.strftime("%Y-%m-%d_%H%M%S"))
-              c = @@DATA.select{|item| item.has_key?(offset)}
-              _offset = c.first[offset][:value]
-              _length = c.first[length][:value]
-              File.open(@filename, "rb") do |io|
-                io.seek(@TIFF_header_offset + _offset, IO::SEEK_SET)
-                io_extract = File.open(extract_name, "wb")
-                _length.times {
-                  io_extract << io.readchar
-                }
-              end
-              extract_name
+        @@DATA.each_with_index do |c, index|
+          if c.has_key?(offset)
+            # ThumbnailOffset -> thumbnail
+            # PreviewImageStart -> preview
+            kind = offset.match(/([[:upper:]]{1}[[:lower:]]*)/).captures.first.downcase
+            ext = ".jpeg"
+            case index
+            when 0 # IFD0
+              kind = "small_#{kind}"
+            when 1 # IFD1
+              kind = "#{kind}"
+            when 2 # IFD2
+              kind = "uncompressed_#{kind}"
+              ext = ".raw"
+            when 3 # IFD3
+              kind = "losless_#{kind}"
             end
-          }
+            instance_variable_set("@#{kind}", true)
+            # dynamically create method to extract preview/thumbnail
+            self.class.instance_eval {
+              define_method ("extract_%s" % kind).to_sym do |path=nil|
+                path ||= File.dirname(@filename)
+                extract_name = File.basename(@filename)
+                extract_name.gsub!(File.extname(extract_name), ext)
+                extract_name = File.join(path, "#{kind}_%s_#{extract_name}" % Time.now.strftime("%Y-%m-%d_%H%M%S"))
+                c = @@DATA.select{|item| item.has_key?(offset)}
+                _offset = c.first[offset][:value]
+                _length = c.first[length][:value]
+                File.open(@filename, "rb") do |io|
+                  io.seek(@TIFF_header_offset + _offset, IO::SEEK_SET)
+                  io_extract = File.open(extract_name, "wb")
+                  _length.times {
+                    io_extract << io.readchar
+                  }
+                end
+                extract_name
+              end
+            }
+          end
         end
-      end
       }
     end
 
@@ -223,10 +232,17 @@ module REXIF
       @thumbnail
     end
 
-    def has_preview?
-      @preview
+    def has_small_preview?
+      @small_preview
     end
 
+    def has_losless_preview?
+      @losless_preview
+    end
+
+    def has_uncompressed_preview?
+      @uncompressed_preview
+    end
 
     # Generate method name for each info available in the picture
     # Generate help() methods to display them <- maybe useless...
@@ -280,24 +296,17 @@ module REXIF
           when INT32U[:id]
             _data = _data.unpack('V*').first.to_i if @endianess == :little
             _data = _data.unpack('N*').first.to_i if @endianess == :big
-          when RATIONAL64U[:id]
-            _data = _data.unpack('Q*').first.to_i
-          when RATIONAL64S[:id]
-            _data = _data.unpack('q*').first.to_i
           when ASCII[:id]
             ret = ""
             _data.each_byte{|c| ret << c.chr }
             _data = ret.to_i
-          else
-            # _data is the direct value
-            _data = _data.convert(@endianess)
           end
           ddputs "%s: Direct value detected" % _data
           data[key][:value] = (entries[key].has_key?(:exec)) ? entries[key][:exec].call(_data) : _data
         else
         # _data is a pointer to the value
           ddputs "Get Pointer: %s" % _data.unpack("H*").first.to_s
-          _data = _data.to_num(@endianess)
+          _data = _data.convert(@endianess)
           data[key][:pointer] = _data
         end
         ddputs "%s : (type: %s, size: %s) 0x%s" % [key, type, size, _data.to_hexa]
@@ -332,9 +341,9 @@ module REXIF
             4.times{denum << @io.readchar}
           }
           if $DDEBUG
-            num.unpack("H*").first.scan(/../).map{|c| print "\\x"+c}
-            puts ""
-            denum.unpack("H*").first.scan(/../).map{|c| print "\\x"+c}
+            puts "-> #{key} <-"
+            puts "num: %s" % num.unpack("H*").first.scan(/../).map{|c| "\\x"+c}.join(" ")
+            puts "denum: %s" % denum.unpack("H*").first.scan(/../).map{|c| "\\x"+c}.join(" ")
             puts ""
           end
           case entries[k][:size]
@@ -352,6 +361,7 @@ module REXIF
           end
         else
           eputs "%s Unknown type" % entries[k][:type]
+          eputs entries[k].inspect
         end
       end
     end
