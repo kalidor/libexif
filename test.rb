@@ -13,33 +13,35 @@ io.help.split(", ").each do |k|
   puts "%s: %s" % [k, io.send(k.to_sym)]
 end
 
+# puts io.extract_all()
+# or
+Dir.mkdir("extract") if not File.exists?("extract")
 if io.has_thumbnail?
   puts "[+] extract_thumbnail() available."
   begin
-    thumbname = io.extract_thumbnail
+    thumbname = io.extract_thumbnail("extract")
     puts "[+] Extracted : %s" % thumbname
   end
 end
 if io.has_small_preview?
   puts "[+] extract_preview() available."
   begin
-    preview = io.extract_small_preview('./')
+    preview = io.extract_small_preview('extract')
     puts "[+] Extracted : %s" % preview
   end
 end
 
-if io.has_losless_preview?
-  puts "[+] extract_losless_preview() available."
+if io.has_lossless_preview?
+  puts "[+] extract_lossless_preview() available."
   begin
-    losless_preview = io.extract_losless_preview('./')
-    puts "[+] Extracted : %s" % losless_preview
+    lossless_preview = io.extract_lossless_preview('extract')
+    puts "[+] Extracted : %s" % lossless_preview
   end
 end
-
-if io.has_uncompressed_preview?
-  puts "[+] extract_uncompressed_preview() available."
+if io.has_rgb_uncompress_preview?
+  puts "[+] extract_rgb_uncompress_preview() available."
   begin
-    uncompressed = io.extract_uncompressed_preview('./')
+    uncompressed = io.extract_rgb_uncompress_preview('extract')
     puts "[+] Extracted : %s" % uncompressed
   end
 end

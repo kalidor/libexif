@@ -49,6 +49,35 @@ module REXIF
       end
     end
 
+
+    # self explained
+    def has_thumbnail?
+      @thumbnail
+    end
+
+    def has_small_preview?
+      @small_preview
+    end
+
+    def has_lossless_preview?
+      @lossless_preview
+    end
+
+    def has_rgb_uncompress_preview?
+      @rgb_uncompress_preview
+    end
+
+    def extract_all(path="./")
+      ret = []
+      ret << extract_thumbnail(path) if defined? extract_thumbnail
+      ret << extract_small_preview(path) if defined? extract_small_preview
+      ret << extract_lossless_preview(path) if defined? extract_lossless_preview
+      ret << extract_rgb_uncompress_preview(path) if defined? extract_rgb_uncompress_preview
+      ret
+    end
+
+  private
+
     def puts(str)
       STDOUT.write("%s\n" % str)
     end
@@ -76,7 +105,9 @@ module REXIF
       @TIFF_header_offset ||= nil
       @io = nil
       @thumbnail = false
-      @preview = false
+      @small_preview = false
+      @lossless_preview = false
+      @rgb_uncompress_preview = false
     end
 
     def detect_endianess
@@ -156,15 +187,15 @@ module REXIF
       end
 
       next_IFD, @@DATA[0] = get_offset(expected_entries?, IFD)
-      next_IFD = next_IFD.to_num(@endianess)
+      next_IFD = next_IFD.convert(@endianess)
       i = 1
       # Each IFD (IFD0 to IFD3) has potential pointer to the next one
       # last one is 0x0000
       while next_IFD != 0
-        ddputs " -- Jumping to the next hop --"
+        ddputs " -- Jumping to the next hop (%04s) --" % next_IFD.to_s(16)
         @io.seek(@TIFF_header_offset + next_IFD , IO::SEEK_SET)
         next_IFD, @@DATA[i] = get_offset(expected_entries?, IFD)
-        next_IFD = next_IFD.to_num(@endianess)
+        next_IFD = next_IFD.convert(@endianess)
         i += 1
       end
       # Usually the ExifOffset is present in the first part
@@ -179,99 +210,6 @@ module REXIF
       end
     end
 
-    # Detect if thumbnail has been found and define function to extract
-    # thumbnail if available
-    def handle_embedded
-      data = [["ThumbnailOffset","ThumbnailLength"],["PreviewImageStart","PreviewImageLength"]]
-      data.map{|offset, length|
-        @@DATA.each_with_index do |c, index|
-          if c.has_key?(offset)
-            # ThumbnailOffset -> thumbnail
-            # PreviewImageStart -> preview
-            kind = offset.match(/([[:upper:]]{1}[[:lower:]]*)/).captures.first.downcase
-            ext = ".jpeg"
-            case index
-            when 0 # IFD0
-              kind = "small_#{kind}"
-            when 1 # IFD1
-              kind = "#{kind}"
-            when 2 # IFD2
-              kind = "uncompressed_#{kind}"
-              ext = ".raw"
-            when 3 # IFD3
-              kind = "losless_#{kind}"
-            end
-            instance_variable_set("@#{kind}", true)
-            # dynamically create method to extract preview/thumbnail
-            self.class.instance_eval {
-              define_method ("extract_%s" % kind).to_sym do |path=nil|
-                path ||= File.dirname(@filename)
-                extract_name = File.basename(@filename)
-                extract_name.gsub!(File.extname(extract_name), ext)
-                extract_name = File.join(path, "#{kind}_%s_#{extract_name}" % Time.now.strftime("%Y-%m-%d_%H%M%S"))
-                c = @@DATA.select{|item| item.has_key?(offset)}
-                _offset = c.first[offset][:value]
-                _length = c.first[length][:value]
-                File.open(@filename, "rb") do |io|
-                  io.seek(@TIFF_header_offset + _offset, IO::SEEK_SET)
-                  io_extract = File.open(extract_name, "wb")
-                  _length.times {
-                    io_extract << io.readchar
-                  }
-                end
-                extract_name
-              end
-            }
-          end
-        end
-      }
-    end
-
-    # self explained
-    def has_thumbnail?
-      @thumbnail
-    end
-
-    def has_small_preview?
-      @small_preview
-    end
-
-    def has_losless_preview?
-      @losless_preview
-    end
-
-    def has_uncompressed_preview?
-      @uncompressed_preview
-    end
-
-    # Generate method name for each info available in the picture
-    # Generate help() methods to display them <- maybe useless...
-    # but some picture could miss some exif info
-    def set_functions
-      self.class.instance_eval do
-        methods = []
-        @@DATA.each_with_index do |c, index|
-          txt = "IFD"
-          if index == 1
-            txt = "EXIF"
-          elsif index > 1
-            index -= 1
-          end
-          c.each do |k, v|
-            method = txt + index.to_s + k
-            methods << method
-            define_method method.to_sym do
-              v[:value]
-            end
-          end
-        end
-        define_method "help".to_sym do
-            methods.join(", ")
-        end
-      end
-    end
-
-  private
     # Get and convert the entries offset
     # Depends on the previously detected endianess
     def get_offset(expected_content, entries)
@@ -341,14 +279,15 @@ module REXIF
             4.times{denum << @io.readchar}
           }
           if $DDEBUG
-            puts "-> #{key} <-"
+            puts "-> #{k} <-"
             puts "num: %s" % num.unpack("H*").first.scan(/../).map{|c| "\\x"+c}.join(" ")
             puts "denum: %s" % denum.unpack("H*").first.scan(/../).map{|c| "\\x"+c}.join(" ")
-            puts ""
+            puts "num %d" % num.convert(@endianess)
+            puts "denum %d" % denum.convert(@endianess)
           end
           case entries[k][:size]
           when 1
-            r_f = Rational(num.convert(@endianess), denum.convert(@endianess)).to_f
+            r_f = Rational(num.convert(@endianess),denum.convert(@endianess)).to_f
             r = r_f.to_i
             entries[k][:value] = "%0.2f (%s)" % [r_f, r]
           else
@@ -361,10 +300,59 @@ module REXIF
           end
         else
           eputs "%s Unknown type" % entries[k][:type]
+          eputs entries[k][:type].to_s(16)
           eputs entries[k].inspect
         end
       end
     end
+
+    # Detect if thumbnail has been found and define function to extract
+    # thumbnail if available
+    def handle_embedded
+      data = [["ThumbnailOffset","ThumbnailLength"],["PreviewImageStart","PreviewImageLength"]]
+      data.map{|offset, length|
+        @@DATA.each_with_index do |c, index|
+          if c.has_key?(offset)
+            # ThumbnailOffset -> thumbnail
+            # PreviewImageStart -> preview
+            ext = ".jpeg"
+            case index
+            when 0 # IFD0
+              kind = "small_preview"
+            when 1 # IFD1
+              kind = "thumbnail"
+            when 2 # IFD2
+              kind = "rgb_uncompress_preview"
+              ext = ".raw"
+            when 3 # IFD3
+              kind = "lossless_preview"
+              ext = ".raw"
+            end
+            instance_variable_set("@#{kind}", true)
+            # dynamically create method to extract preview/thumbnail
+            self.class.instance_eval {
+              define_method ("extract_%s" % kind).to_sym do |path=nil|
+                path ||= File.dirname(@filename)
+                extract_name = File.basename(@filename)
+                extract_name.gsub!(File.extname(extract_name), ext)
+                extract_name = File.join(path, "#{kind}_%s_#{extract_name}" % Time.now.strftime("%Y-%m-%d_%H%M%S"))
+                _offset = c[offset][:value]
+                _length = c[length][:value]
+                File.open(@filename, "rb") do |io|
+                  io.seek(@TIFF_header_offset + _offset, IO::SEEK_SET)
+                  extracted_f = File.open(extract_name, "wb")
+                  _length.times {
+                    extracted_f << io.readchar
+                  }
+                end
+                extract_name
+              end
+            }
+          end
+        end
+      }
+    end
+
 
     # Read block (12 bytes)
     # return id, type, size, data
@@ -390,5 +378,31 @@ module REXIF
         block[4..7].to_num(@endianess),
         block[8..11]
     end
+
+    # Generate method name for each info available in the picture
+    def set_functions
+      self.class.instance_eval do
+        methods = []
+        @@DATA.each_with_index do |c, index|
+          txt = "IFD"
+          if index == 1
+            txt = "EXIF"
+          elsif index > 1
+            index -= 1
+          end
+          c.each do |k, v|
+            method = txt + index.to_s + k
+            methods << method
+            define_method method.to_sym do
+              v[:value]
+            end
+          end
+        end
+        define_method 'help' do
+          methods.join(', ')
+        end
+      end
+    end
+
   end
 end

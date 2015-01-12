@@ -162,3 +162,4 @@ IFD["YCbCrPositioning"] = {:id => 0x0213, :exec => proc{|v|
 IFD["ReferenceBlackWhite"] = {:id => 0x0214}
 IFD["Copyright"] = {:id => 0x8298}
 IFD["ExifOffset"] = {:id => 0x8769}
+IFD["GPSInfo"] = {:id => 0x8825}
