@@ -15,7 +15,7 @@ end
 
 # puts io.extract_all()
 # or
-Dir.mkdir("extract") if not File.exists?("extract")
+Dir.mkdir("extract") if not File.exist?("extract")
 if io.has_thumbnail?
   puts "[+] extract_thumbnail() available."
   begin
