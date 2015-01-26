@@ -4,8 +4,9 @@ require 'libEXIF'
 if ARGV.length > 0
   filename = ARGV[0].dup
 end
-io = REXIF::IMG.new(filename)
+io = REXIF::IMG.new(filename, true)
 puts "Available methods: %s" % io.methods.map{|m| m if m.to_s.start_with?('has_')}.delete_if{|m| m == nil}.join(", ")
+puts "Available methods: %s" % io.methods.map{|m| m if m.to_s.start_with?('extract_')}.delete_if{|m| m == nil}.join(", ")
 puts "Available attributes relative to JPG library:"
 puts io.help
 puts
@@ -13,6 +14,7 @@ io.help.split(", ").each do |k|
   puts "%s: %s" % [k, io.send(k.to_sym)]
 end
 
+exit
 # puts io.extract_all()
 # or
 Dir.mkdir("extract") if not File.exist?("extract")

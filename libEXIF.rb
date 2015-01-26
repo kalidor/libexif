@@ -6,39 +6,45 @@ $LOAD_PATH << "."
 require 'flash-var'
 require 'exif-var'
 require 'ifd-var'
+require 'gps-var'
 require 'time'
 
-$DDEBUG = false
+$VERBOSE = nil
 
-# Overload String class to add helpful stuff
-class String
-  def to_num(endianess) # endianess convertion
-    case endianess
-    when :big
-      self.unpack("n*").join.hex
-    when :little
-      self.unpack("v*").first
-    end
+class PackSpec
+  def initialize(endian)
+    @packspec = [
+        nil,           # nothing (shouldn’t happen)
+        'C*',           # BYTE (8-bit unsigned integer)
+        nil,           # ASCII
+        (endian == :little) ? 'v*' : 'n*',        # SHORT (16-bit unsigned integer)
+        (endian == :little) ? 'V*' : 'N*',        # LONG (32-bit unsigned integer)
+        (endian == :little) ? 'V*' : 'N*',        # LONG (32-bit unsigned integer)
+        'c*',           # SBYTE (8-bit signed integer)
+        nil,           # UNDEFINED
+        (endian == :little) ? 'v*' : 'n*',        # SSHORT (16-bit unsigned integer)
+        (endian == :little) ? 'V*' : 'N*',        # SLONG (32-bit unsigned integer)
+        (endian == :little) ? 'V*' : 'N*',        # SRATIONAL (32-bit unsigned integer)
+      ]
   end
-  def convert(endianess) # endianess convertion
-    case endianess
-    when :big
-      self.unpack("N*").join.hex
-    when :little
-      self.unpack("V*").first
-    end
+
+  def packspec
+    @packspec
   end
 end
 
-# Overload Fixnum class to add helpful stuff
-class Fixnum
-  def to_hexa; self.to_s(16) end
+# Overload String class to add helpful stuff
+class String
+  def convert(ptr, type) # endianess convertion
+    self.unpack(ptr.packspec[type])
+  end
 end
 
 # REXIF module
 module REXIF
   class IMG
-    def initialize(filename)
+    def initialize(filename, verbose=false)
+      [true, false, nil].include?(verbose) ? $VERBOSE = verbose : $VERBOSE = false
       init_var(filename)
       dputs "Analysing: %s" % filename
       File.open(filename, "rb") do |io|
@@ -48,7 +54,6 @@ module REXIF
         set_functions()
       end
     end
-
 
     # self explained
     def has_thumbnail?
@@ -82,16 +87,22 @@ module REXIF
       STDOUT.write("%s\n" % str)
     end
     def ddputs(str)
-      puts "[D] %s" % str if $DDEBUG
+      puts "[D] %s" % str if $DEBUG
     end
     def dputs(str)
-      puts "[+] %s" % str
+      puts "[+] %s" % str if $VERBOSE
     end
     def dprint(str)
-      print "[+] %s" % str if $DEBUG
+      print "[+] %s" % str if $VERBOSE
     end
     def eputs(str)
       puts "[-] %s" % str
+    end
+    def puts_debug(var, str)
+      ddputs "*" * 20 + " DEBUG " + "*" * 20
+      ddputs "#{var}: %s" % str.unpack("H*").first.scan(/../).map{|c| "\\x"+c}.join("")
+      ddputs "#{var}: %d" % str.convert(@packspec, 5).first
+      ddputs "*" * 47
     end
 
     def method_missing(m, *args, &block)
@@ -99,7 +110,7 @@ module REXIF
     end
 
     def init_var(filename)
-      @@DATA ||= Array.new
+      @@DATA = Array.new
       @filename = filename
       @endianess ||= nil
       @TIFF_header_offset ||= nil
@@ -118,6 +129,7 @@ module REXIF
       begin
         while not found do
           4.times{ tmp << @io.readchar}
+          puts tmp.inspect
           while (l=tmp.shift or not tmp.empty?) do
             _l = l.unpack('C*').first
             if LITTLE_ENDIAN_[look_for] == _l or BIG_ENDIAN_[look_for] == _l
@@ -146,6 +158,7 @@ module REXIF
         eputs "Unrecognized endianess. Exiting"
         exit(2)
       end
+      @packspec = PackSpec.new(@endianess)
       # move back to the previous position in case we read more bytes than
       # expected
       @io.seek( -tmp.length, IO::SEEK_CUR) if tmp.length != 0
@@ -154,16 +167,14 @@ module REXIF
       @TIFF_header_offset = @io.pos - 4
       # we get the IFD0_ENTRIES offset by reading the next 4 bytes taking care
       # to the endianess
-      tmp = ""
-      4.times{tmp << @io.readchar}
-      @first_ifd_offset = tmp.to_num(@endianess)
+      tmp = @io.read(4)
+      @first_ifd_offset = tmp.convert(@packspec, 3).first
     end
 
     # Get the count of IFD entries (Read and convert 2 bytes)
     def expected_entries?
-      expected_size = ""
-      2.times{expected_size << @io.readchar}
-      expected_entries = expected_size.to_num(@endianess)
+      expected_size = @io.read(2)
+      expected_entries = expected_size.convert(@packspec, 3).first
       dputs "Expected %d IFD entries" % expected_entries
       return expected_entries
     end
@@ -187,7 +198,7 @@ module REXIF
       end
 
       next_IFD, @@DATA[0] = get_offset(expected_entries?, IFD)
-      next_IFD = next_IFD.convert(@endianess)
+      next_IFD = next_IFD.convert(@packspec, 5).first
       i = 1
       # Each IFD (IFD0 to IFD3) has potential pointer to the next one
       # last one is 0x0000
@@ -195,7 +206,7 @@ module REXIF
         ddputs " -- Jumping to the next hop (%04s) --" % next_IFD.to_s(16)
         @io.seek(@TIFF_header_offset + next_IFD , IO::SEEK_SET)
         next_IFD, @@DATA[i] = get_offset(expected_entries?, IFD)
-        next_IFD = next_IFD.convert(@endianess)
+        next_IFD = next_IFD.convert(@packspec, 5).first
         i += 1
       end
       # Usually the ExifOffset is present in the first part
@@ -203,6 +214,11 @@ module REXIF
         # if yes, seek to the given offset
         @io.seek(@TIFF_header_offset + @@DATA[0]["ExifOffset"][:value], IO::SEEK_SET)
         next_IFD, @@DATA[i] = get_offset(expected_entries?, EXIF)
+        i += 1
+      end
+      if @@DATA[0].has_key? "GPSInfo"
+        @io.seek(@TIFF_header_offset + @@DATA[0]["GPSInfo"][:value], IO::SEEK_SET)
+        next_IFD, @@DATA[i] = get_offset(expected_entries?, GPS)
       end
 
       @@DATA.each do |c|
@@ -224,32 +240,29 @@ module REXIF
         end
         key = key[0]
         data[key] = {:size => size, :pointer => nil, :value => nil, :type => type}
-        if [0x02, 0x03, 0x04, 0x07].include?(type) and size <= 0x04
+        if [0x01, 0x02, 0x03, 0x04, 0x07].include?(type) and size <= 0x04
           case type
+          when BYTE[:id]
+            _data = _data.convert(@packspec, type).delete_if{|v| v==0}.join(".")
           when UNDEF[:id] # fuck exif version type...
             _data = _data.to_i
-          when INT16U[:id]
-            _data = _data.unpack('v*').first.to_i if @endianess == :little
-            _data = _data.unpack('n*').first.to_i if @endianess == :big
-          when INT32U[:id]
-            _data = _data.unpack('V*').first.to_i if @endianess == :little
-            _data = _data.unpack('N*').first.to_i if @endianess == :big
+          when INT16U[:id], INT32U[:id]
+            _data = _data.convert(@packspec, type).first.to_i
           when ASCII[:id]
-            ret = ""
-            _data.each_byte{|c| ret << c.chr }
-            _data = ret.to_i
+            _data.each_byte{|c| c.chr }
           end
           ddputs "%s: Direct value detected" % _data
+          _data.strip! if _data.class == String
           data[key][:value] = (entries[key].has_key?(:exec)) ? entries[key][:exec].call(_data) : _data
         else
         # _data is a pointer to the value
           ddputs "Get Pointer: %s" % _data.unpack("H*").first.to_s
-          _data = _data.convert(@endianess)
+          _data = _data.convert(@packspec, 5).first
           data[key][:pointer] = _data
         end
-        ddputs "%s : (type: %s, size: %s) 0x%s" % [key, type, size, _data.to_hexa]
+        ddputs "%s : (type: %s, size: %s) %s" % [key, type, size, _data]
       end
-      return @io.readchar<<@io.readchar<<@io.readchar<<@io.readchar, data
+      return @io.read(4), data
     end
 
     # Read and convert info at the offset (see :pointer)
@@ -262,46 +275,63 @@ module REXIF
         if @io.pos != entries[k][:pointer]
           @io.seek(@TIFF_header_offset + entries[k][:pointer] - @io.pos, IO::SEEK_CUR)
         end
-        tmp = ""
-        ddputs "Position: %d" % @io.pos
+        ddputs "#{k}"
+        ddputs "\tPosition: %d" % @io.pos
+        ddputs "\tType : %d" % entries[k][:type]
         case entries[k][:type]
         when ASCII[:id]
-          entries[k][:size].times{tmp << @io.readchar}
-          entries[k][:value] = tmp.strip
-        when INT16U[:id] # direct value, not used here
-        when INT32U[:id] # direct value, not used here
-        when UNDEF[:id] # EXIF version, direct value
+          entries[k][:value] = @io.read(entries[k][:size]).strip
         when RATIONAL64U[:id], RATIONAL64S[:id]
-          num = ""
-          denum = ""
-          entries[k][:size].times{
-            4.times{num << @io.readchar}
-            4.times{denum << @io.readchar}
-          }
-          if $DDEBUG
-            puts "-> #{k} <-"
-            puts "num: %s" % num.unpack("H*").first.scan(/../).map{|c| "\\x"+c}.join(" ")
-            puts "denum: %s" % denum.unpack("H*").first.scan(/../).map{|c| "\\x"+c}.join(" ")
-            puts "num %d" % num.convert(@endianess)
-            puts "denum %d" % denum.convert(@endianess)
-          end
           case entries[k][:size]
           when 1
-            r_f = Rational(num.convert(@endianess),denum.convert(@endianess)).to_f
+            num = @io.read(entries[k][:size] * 4).convert(@packspec, entries[k][:type]).first
+            denum = @io.read(entries[k][:size] * 4).convert(@packspec, entries[k][:type]).first
+            r_f = Rational(num,denum).to_f
             r = r_f.to_i
-            entries[k][:value] = "%0.2f (%s)" % [r_f, r]
-          else
-            lensSpec = num.unpack("L*")
-            if lensSpec[0] == lensSpec[1]
-              entries[k][:value] = "%dmm F%d-%d" % lensSpec
+            entries[k][:value] = "%0.2f (%d)" % [r_f, r]
+          when 3
+            d = @io.read(8).convert(@packspec, entries[k][:type])
+            m = @io.read(8).convert(@packspec, entries[k][:type])
+            s = @io.read(8).convert(@packspec, entries[k][:type])
+            if s[0]/s[1] == 0
+              d = d.inject(:/).to_i
+              m = Rational(m[0], m[1]).to_f
+              s_sup = m % 1
+              s = (Rational(s[0], s[1]).to_f + s_sup) * 60
+              # See http://en.wikipedia.org/wiki/Geographic_coordinate_conversion
+              # and http://en.wikipedia.org/wiki/Geotagging#GPS_formats
+              geo = d + Rational((Rational(s.to_f,3600).to_f + m), 60).to_f
+              entries[k][:value] = "%d deg %d' %0.2f\" %%s (%%s%0.14f)" % [d, m.to_i, s, geo]
+              if entries.include?(k+"Ref")
+                ref = entries[k+"Ref"][:value]
+                entries[k][:value] = entries[k][:value] % [ref, ["S","W"].include?(ref) ? "-" : "+"]
+              end
             else
-              entries[k][:value] = "%d-%dmm F%d-%d" % lensSpec
+              tmp = []
+              [d, m, s].map{|x|
+                tmp << Rational(x[0], x[1]).to_f
+              }
+              entries[k][:value] = tmp.join(":")
+            end
+          when 4
+            foc = []
+            depth = []
+            [foc, depth].map{|t|
+              @io.read(entries[k][:size] * 4).unpack("L*").each_slice(2) do |n, d|
+                d == 0 ? t << 0 : t << n/d
+              end
+            }
+            if foc[0] == foc[1]
+              entries[k][:value] = "%dmm F%d-%d" % [[foc[0]].concat(depth)]
+            else
+              entries[k][:value] = "%d-%dmm F%d-%d" % foc.concat(depth)
             end
           end
-        else
-          eputs "%s Unknown type" % entries[k][:type]
-          eputs entries[k][:type].to_s(16)
-          eputs entries[k].inspect
+        #else
+        #  eputs "%s Unknown type" % entries[k][:type]
+        #  eputs "%s Unknown type" % entries[k][:type].class
+        #  eputs "0x%04x" % entries[k][:type].to_s(16)
+        #  eputs entries[k].inspect.to_s
         end
       end
     end
@@ -329,9 +359,9 @@ module REXIF
               ext = ".raw"
             end
             instance_variable_set("@#{kind}", true)
-            # dynamically create method to extract preview/thumbnail
+            # dynamically create methods to extract preview/thumbnail
             self.class.instance_eval {
-              define_method ("extract_%s" % kind).to_sym do |path=nil|
+              define_method(("extract_%s" % kind).to_sym) do |path=nil|
                 path ||= File.dirname(@filename)
                 extract_name = File.basename(@filename)
                 extract_name.gsub!(File.extname(extract_name), ext)
@@ -341,9 +371,7 @@ module REXIF
                 File.open(@filename, "rb") do |io|
                   io.seek(@TIFF_header_offset + _offset, IO::SEEK_SET)
                   extracted_f = File.open(extract_name, "wb")
-                  _length.times {
-                    extracted_f << io.readchar
-                  }
+                  extracted_f << io.read(_length)
                 end
                 extract_name
               end
@@ -357,14 +385,8 @@ module REXIF
     # Read block (12 bytes)
     # return id, type, size, data
     def readblock()
-      size = 12
-      block = ""
-      size.times{block << @io.readchar}
-      if $DDEBUG
-        puts "Current block:"
-        block.unpack("H*").first.scan(/../).map{|c| print "\\x"+c}
-        puts ""
-      end
+      block = @io.read(12)
+      puts_debug "current_block", block
 
       # Exif2.2:
       # Each of the 12-byte field Interoperability consists of the following
@@ -373,9 +395,9 @@ module REXIF
       # Bytes 2-3 Type
       # Bytes 4-7 Count
       # Bytes 8-11 Value Offset
-      return block[0..1].to_num(@endianess),
-        block[2..3].to_num(@endianess),
-        block[4..7].to_num(@endianess),
+      return block[0..1].convert(@packspec, 3).first,
+        block[2..3].convert(@packspec, 3).first,
+        block[4..7].convert(@packspec, 3).first,
         block[8..11]
     end
 
