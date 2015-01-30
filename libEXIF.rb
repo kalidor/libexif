@@ -122,53 +122,28 @@ module REXIF
     end
 
     def detect_endianess
-      endian = []
-      tmp = []
-      found = false
-      look_for = 0
-      begin
-        while not found do
-          4.times{ tmp << @io.readchar}
-          puts tmp.inspect
-          while (l=tmp.shift or not tmp.empty?) do
-            _l = l.unpack('C*').first
-            if LITTLE_ENDIAN_[look_for] == _l or BIG_ENDIAN_[look_for] == _l
-              look_for += 1
-              endian << l
-              if endian.length == LITTLE_ENDIAN_.length
-                found = true
-                break
-              end
-            else
-              look_for = 0
-              endian.clear
-            end
-          end
+      index = nil
+      block = 8
+      until @io.pos > 100 or @endianess
+        c = @io.read(block)
+        if index = c.index(LITTLE_ENDIAN)
+          @endianess = :little
+        elsif index = c.index(BIG_ENDIAN)
+          @endianess = :big
         end
-      rescue
-        eputs "Cannot detect endianess. Exiting..."
-        exit(2)
       end
-      case endian.join
-      when BIG_ENDIAN_.map{|c| c.chr}.join #MM
-        @endianess = :big
-      when LITTLE_ENDIAN_.map{|c| c.chr}.join #II
-        @endianess = :little
-      else
-        eputs "Unrecognized endianess. Exiting"
-        exit(2)
+      if @endianess
+        # move back to the previous position in case we read more bytes than
+        # expected
+        @io.seek(-block+index+4, IO::SEEK_CUR)
       end
       @packspec = PackSpec.new(@endianess)
-      # move back to the previous position in case we read more bytes than
-      # expected
-      @io.seek( -tmp.length, IO::SEEK_CUR) if tmp.length != 0
       # we compute the tiff_header position (-4) (endianess x 2 + identifier)
       # in order to seek from here to the IFD0 offset
       @TIFF_header_offset = @io.pos - 4
       # we get the IFD0_ENTRIES offset by reading the next 4 bytes taking care
       # to the endianess
-      tmp = @io.read(4)
-      @first_ifd_offset = tmp.convert(@packspec, 3).first
+      @first_ifd_offset = @io.read(4).convert(@packspec, 3).first
     end
 
     # Get the count of IFD entries (Read and convert 2 bytes)

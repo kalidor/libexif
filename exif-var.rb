@@ -1,9 +1,8 @@
 # (c) 2014-2015 G. Charbonneau
 # Published under the terms of WtfPLv2
 
-EXIFHEADER = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00]
-BIG_ENDIAN_ = [0x4d, 0x4d, 0x00, 0x2a]
-LITTLE_ENDIAN_ = [0x49, 0x49, 0x2a, 0x00]
+BIG_ENDIAN = "MM*\x00"
+LITTLE_ENDIAN = "II*\x00"
 
 BYTE = {:id => 0x01, :unit => 1}
 ASCII = {:id => 0x02, :unit => 1}
