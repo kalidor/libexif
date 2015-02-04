@@ -33,6 +33,25 @@ class PackSpec
   end
 end
 
+class Template
+  def metaclass
+    class << self; self; end
+  end
+  def set(var, val)
+    singleton_class.class_eval do; attr_accessor "#{var}"; end
+    send("#{var}=", val)
+  end
+end
+
+class Gps < Template
+end
+
+class Exif < Template
+end
+
+class Ifd < Template
+end
+
 # Overload String class to add helpful stuff
 class String
   def convert(ptr, type) # endianess convertion
@@ -43,6 +62,7 @@ end
 # REXIF module
 module REXIF
   class IMG
+    attr_reader :gps, :ifd, :exif
     def initialize(filename, verbose=false)
       [true, false, nil].include?(verbose) ? $VERBOSE = verbose : $VERBOSE = false
       init_var(filename)
@@ -51,7 +71,8 @@ module REXIF
         @io = io
         analyze()
         handle_embedded()
-        set_functions()
+        set_classes()
+        #set_functions()
       end
     end
 
@@ -110,7 +131,7 @@ module REXIF
     end
 
     def init_var(filename)
-      @@DATA = Array.new
+      @@DATA = Hash.new
       @filename = filename
       @endianess ||= nil
       @TIFF_header_offset ||= nil
@@ -119,6 +140,9 @@ module REXIF
       @small_preview = false
       @lossless_preview = false
       @rgb_uncompress_preview = false
+      @gps = Gps.new
+      @exif = Exif.new
+      @ifd = Array.new
     end
 
     def detect_endianess
@@ -172,7 +196,7 @@ module REXIF
         seek_IFD0_entries()
       end
 
-      next_IFD, @@DATA[0] = get_offset(expected_entries?, IFD)
+      next_IFD, @@DATA["IFD%d" % 0] = get_offset(expected_entries?, IFD)
       next_IFD = next_IFD.convert(@packspec, 5).first
       i = 1
       # Each IFD (IFD0 to IFD3) has potential pointer to the next one
@@ -180,24 +204,24 @@ module REXIF
       while next_IFD != 0
         ddputs " -- Jumping to the next hop (%04s) --" % next_IFD.to_s(16)
         @io.seek(@TIFF_header_offset + next_IFD , IO::SEEK_SET)
-        next_IFD, @@DATA[i] = get_offset(expected_entries?, IFD)
+        next_IFD, @@DATA["IFD%d" % i] = get_offset(expected_entries?, IFD)
         next_IFD = next_IFD.convert(@packspec, 5).first
         i += 1
       end
       # Usually the ExifOffset is present in the first part
-      if @@DATA[0].has_key? "ExifOffset"
+      if @@DATA["IFD0"].has_key? "ExifOffset"
         # if yes, seek to the given offset
-        @io.seek(@TIFF_header_offset + @@DATA[0]["ExifOffset"][:value], IO::SEEK_SET)
-        next_IFD, @@DATA[i] = get_offset(expected_entries?, EXIF)
+        @io.seek(@TIFF_header_offset + @@DATA["IFD0"]["ExifOffset"][:value], IO::SEEK_SET)
+        next_IFD, @@DATA["EXIF"] = get_offset(expected_entries?, EXIF)
         i += 1
       end
-      if @@DATA[0].has_key? "GPSInfo"
-        @io.seek(@TIFF_header_offset + @@DATA[0]["GPSInfo"][:value], IO::SEEK_SET)
-        next_IFD, @@DATA[i] = get_offset(expected_entries?, GPS)
+      if @@DATA["IFD0"].has_key? "GPSInfo"
+        @io.seek(@TIFF_header_offset + @@DATA["IFD0"]["GPSInfo"][:value], IO::SEEK_SET)
+        next_IFD, @@DATA["GPS"] = get_offset(expected_entries?, GPS)
       end
 
-      @@DATA.each do |c|
-        get_values(c)
+      @@DATA.each do |k, v|
+        get_values(v)
       end
     end
 
@@ -316,20 +340,20 @@ module REXIF
     def handle_embedded
       data = [["ThumbnailOffset","ThumbnailLength"],["PreviewImageStart","PreviewImageLength"]]
       data.map{|offset, length|
-        @@DATA.each_with_index do |c, index|
-          if c.has_key?(offset)
+        @@DATA.map do |k,v|
+          if v.has_key?(offset)
             # ThumbnailOffset -> thumbnail
             # PreviewImageStart -> preview
             ext = ".jpeg"
-            case index
-            when 0 # IFD0
+            case k
+            when "IFD0"
               kind = "small_preview"
-            when 1 # IFD1
+            when "IFD1"
               kind = "thumbnail"
-            when 2 # IFD2
+            when "IFD2"
               kind = "rgb_uncompress_preview"
               ext = ".raw"
-            when 3 # IFD3
+            when "IFD3"
               kind = "lossless_preview"
               ext = ".raw"
             end
@@ -341,8 +365,8 @@ module REXIF
                 extract_name = File.basename(@filename)
                 extract_name.gsub!(File.extname(extract_name), ext)
                 extract_name = File.join(path, "#{kind}_%s_#{extract_name}" % Time.now.strftime("%Y-%m-%d_%H%M%S"))
-                _offset = c[offset][:value]
-                _length = c[length][:value]
+                _offset = v[offset][:value]
+                _length = v[length][:value]
                 File.open(@filename, "rb") do |io|
                   io.seek(@TIFF_header_offset + _offset, IO::SEEK_SET)
                   extracted_f = File.open(extract_name, "wb")
@@ -376,22 +400,38 @@ module REXIF
         block[8..11]
     end
 
+    def set_classes
+      def set_fast(var, func, value, id=nil)
+        if id
+          instance_variable_get(var)[id].metaclass.send(:define_method, func) do; value; end
+        else
+          instance_variable_get(var).metaclass.send(:define_method, func) do; value; end
+        end
+      end
+      @@DATA.keys.map{|key|
+        id = nil
+        key =~ /([A-Z]+)(\d*)/
+        if not $2.empty?
+          id = $2.to_i
+          tmp = instance_variable_get("@#{$1.downcase}")
+          tmp[id] = Ifd.new if tmp[id] == nil
+        end
+        @@DATA[key].map{|k,v|
+          set_fast("@#{$1.downcase}", k, v[:value], id)
+        }
+      }
+    end
+
     # Generate method name for each info available in the picture
     def set_functions
       self.class.instance_eval do
         methods = []
-        @@DATA.each_with_index do |c, index|
-          txt = "IFD"
-          if index == 1
-            txt = "EXIF"
-          elsif index > 1
-            index -= 1
-          end
-          c.each do |k, v|
-            method = txt + index.to_s + k
+        @@DATA.map do |k, v|
+          v.each do |kv, vv|
+            method = k + kv
             methods << method
             define_method method.to_sym do
-              v[:value]
+              vv[:value]
             end
           end
         end
@@ -400,6 +440,6 @@ module REXIF
         end
       end
     end
-
   end
+
 end
