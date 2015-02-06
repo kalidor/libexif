@@ -6,33 +6,35 @@ require 'benchmark'
 $BENCH = false
 
 def run(filename)
-  io = REXIF::IMG.new(filename, false)
+  io = REXIF::IMG.new(filename, true)
+  io.analyze()
   if not $BENCH
-    #puts "Available methods: %s" % io.methods.map{|m| m if m.to_s.start_with?('has_')}.delete_if{|m| m == nil}.join(", ")
-    #puts "Available methods: %s" % io.methods.map{|m| m if m.to_s.start_with?('extract_')}.delete_if{|m| m == nil}.join(", ")
-    #puts "Available attributes relative to JPG library:"
-    #puts io.help
-    #puts
-    ## using methods
-    #io.help.split(", ").each do |k|
-    #  puts "%s: %s" % [k, io.send(k.to_sym)]
-    #end
-
-    # or using dedicated class methods
     # io.gps
     # io.exif
-    # io.ifd
-    puts io.ifd[0].Make
-    puts io.ifd[0].Model
-    #puts io.ifd[0].Artist
-    puts io.ifd[0].ImageWidth
-    #puts io.ifd[2].ImageWidth
-    #puts io.ifd[3].ImageWidth
-    #(0..3).map{|i|
-    #puts (io.ifd[i].methods - io.ifd[i].class.methods).inspect
-    #}
-    #puts io.exif.Flash
-    #puts io.exif.methods - io.exif.class.methods
+    # io.ifdX
+    puts "[-] io.instance_variables:"
+    puts io.instance_variables.inspect
+    puts "[-] io.ifd0 method available:"
+    puts io.instance_variable_get("@ifd0").infos.inspect
+    0.upto(3).map{|id|
+      if io.instance_variable_defined? "@ifd%d" % id
+        io.instance_variable_get("@ifd%d" % id).infos.map{|m|
+          puts "io.ifd%d.%s: %s" % [id, m, io.instance_variable_get("@ifd%d" % id).send(m).to_s]
+        }
+      end
+    }
+    puts "GPS infos: %s" % io.gps.infos.inspect if io.instance_variable_defined? '@gps'
+    if io.instance_variable_defined? "@gps"
+      io.gps.infos.map{|m|
+        puts "io.gps.%s: %s" % [m, io.gps.send(m).inspect]
+      }
+    end
+    puts "EXIF infos: %s" % io.exif.infos.inspect if io.instance_variable_defined? '@exif'
+    if io.instance_variable_defined? "@exif"
+      io.exif.infos.map{|m|
+        puts "io.exif.%s: %s" % [m, io.exif.send(m).inspect]
+      }
+    end
 
     # puts io.extract_all()
     # or

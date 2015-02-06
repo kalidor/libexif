@@ -9,8 +9,6 @@ require 'ifd-var'
 require 'gps-var'
 require 'time'
 
-$VERBOSE = nil
-
 class PackSpec
   def initialize(endian)
     @packspec = [
@@ -34,12 +32,17 @@ class PackSpec
 end
 
 class Template
-  def metaclass
-    class << self; self; end
+  attr_reader :infos
+  def initialize(data)
+    @data = data
+    @infos = data.keys
   end
-  def set(var, val)
-    singleton_class.class_eval do; attr_accessor "#{var}"; end
-    send("#{var}=", val)
+  def method_missing(method)
+    if @data.keys.include? method.to_s
+      @data[method.to_s][:value]
+    else
+      raise NoMethodError, "Unknown method '%s'.\nSee 'infos' instance variable." % method.to_s
+    end
   end
 end
 
@@ -49,7 +52,16 @@ end
 class Exif < Template
 end
 
-class Ifd < Template
+class Ifd0 < Template
+end
+
+class Ifd1 < Template
+end
+
+class Ifd2 < Template
+end
+
+class Ifd3 < Template
 end
 
 # Overload String class to add helpful stuff
@@ -62,19 +74,36 @@ end
 # REXIF module
 module REXIF
   class IMG
-    attr_reader :gps, :ifd, :exif
+    attr_reader :gps, :ifd0, :ifd1, :ifd2, :ifd3, :exif
+    attr_reader :verbose, :filename, :endianess
     def initialize(filename, verbose=false)
-      [true, false, nil].include?(verbose) ? $VERBOSE = verbose : $VERBOSE = false
+      [true, false, nil].include?(verbose) ? @verbose = verbose : @verbose = false
       init_var(filename)
-      dputs "Analysing: %s" % filename
-      File.open(filename, "rb") do |io|
+    end
+
+    # Analyze the file:
+    # - detect endianess
+    # - get the offset data
+    # - get the value data
+    # - get raw image data if thumbnail is detected
+    def analyze
+      vputs "Analysing: %s" % filename
+      File.open(@filename, "rb") do |io|
         @io = io
-        analyze()
+        if not @endianess
+          detect_endianess()
+          vputs "Endianess: " + @endianess.to_s
+          seek_IFD0_entries()
+        end
+        get_all_offsets()
+        @@DATA.each do |k, v|
+          get_values(v)
+        end
         handle_embedded()
-        set_classes()
-        #set_functions()
+        gen_instance_variables()
       end
     end
+
 
     # self explained
     def has_thumbnail?
@@ -110,11 +139,11 @@ module REXIF
     def ddputs(str)
       puts "[D] %s" % str if $DEBUG
     end
-    def dputs(str)
-      puts "[+] %s" % str if $VERBOSE
+    def vputs(str)
+      puts "[+] %s" % str if @verbose
     end
     def dprint(str)
-      print "[+] %s" % str if $VERBOSE
+      print "[+] %s" % str if @verbose
     end
     def eputs(str)
       puts "[-] %s" % str
@@ -126,8 +155,10 @@ module REXIF
       ddputs "*" * 47
     end
 
-    def method_missing(m, *args, &block)
-      puts "There's no method called #{m} here."
+    def method_missing(m)
+      raise NoMethodError, "Unknown method '%s'.\
+\nSee 'infos' instance variable to see what is available." % m.to_s
+      #puts "There's no method called #{m} here."
     end
 
     def init_var(filename)
@@ -140,9 +171,6 @@ module REXIF
       @small_preview = false
       @lossless_preview = false
       @rgb_uncompress_preview = false
-      @gps = Gps.new
-      @exif = Exif.new
-      @ifd = Array.new
     end
 
     def detect_endianess
@@ -174,28 +202,17 @@ module REXIF
     def expected_entries?
       expected_size = @io.read(2)
       expected_entries = expected_size.convert(@packspec, 3).first
-      dputs "Expected %d IFD entries" % expected_entries
+      vputs "Expected %d IFD entries" % expected_entries
       return expected_entries
     end
 
     def seek_IFD0_entries
-      dputs "IFD0_entries offset: %s" % @first_ifd_offset.to_s(16)
+      vputs "IFD0_entries offset: %s" % @first_ifd_offset.to_s(16)
       # and seek to the target offset given by the 4 bytes after tiff header
       @io.seek(@TIFF_header_offset + @first_ifd_offset, IO::SEEK_SET)
     end
 
-    # Analyze the file:
-    # - detect endianess
-    # - get the offset data
-    # - get the value data
-    # - get raw image data if thumbnail is detected
-    def analyze
-      if not @endianess
-        detect_endianess()
-        dputs "Endianess: " + @endianess.to_s
-        seek_IFD0_entries()
-      end
-
+    def get_all_offsets
       next_IFD, @@DATA["IFD%d" % 0] = get_offset(expected_entries?, IFD)
       next_IFD = next_IFD.convert(@packspec, 5).first
       i = 1
@@ -218,10 +235,6 @@ module REXIF
       if @@DATA["IFD0"].has_key? "GPSInfo"
         @io.seek(@TIFF_header_offset + @@DATA["IFD0"]["GPSInfo"][:value], IO::SEEK_SET)
         next_IFD, @@DATA["GPS"] = get_offset(expected_entries?, GPS)
-      end
-
-      @@DATA.each do |k, v|
-        get_values(v)
       end
     end
 
@@ -400,46 +413,13 @@ module REXIF
         block[8..11]
     end
 
-    def set_classes
-      def set_fast(var, func, value, id=nil)
-        if id
-          instance_variable_get(var)[id].metaclass.send(:define_method, func) do; value; end
-        else
-          instance_variable_get(var).metaclass.send(:define_method, func) do; value; end
-        end
+    # Generate instance variables name for each kind of info available in the picture
+    def gen_instance_variables
+      @@DATA.keys.map do |key|
+        instance_variable_set("@#{key.downcase}", Object.const_get(key.capitalize).new(@@DATA[key]))
       end
-      @@DATA.keys.map{|key|
-        id = nil
-        key =~ /([A-Z]+)(\d*)/
-        if not $2.empty?
-          id = $2.to_i
-          tmp = instance_variable_get("@#{$1.downcase}")
-          tmp[id] = Ifd.new if tmp[id] == nil
-        end
-        @@DATA[key].map{|k,v|
-          set_fast("@#{$1.downcase}", k, v[:value], id)
-        }
-      }
     end
 
-    # Generate method name for each info available in the picture
-    def set_functions
-      self.class.instance_eval do
-        methods = []
-        @@DATA.map do |k, v|
-          v.each do |kv, vv|
-            method = k + kv
-            methods << method
-            define_method method.to_sym do
-              vv[:value]
-            end
-          end
-        end
-        define_method 'help' do
-          methods.join(', ')
-        end
-      end
-    end
   end
 
 end
