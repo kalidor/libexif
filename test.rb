@@ -26,13 +26,13 @@ def run(filename)
     puts "GPS infos: %s" % io.gps.infos.inspect if io.instance_variable_defined? '@gps'
     if io.instance_variable_defined? "@gps"
       io.gps.infos.map{|m|
-        puts "io.gps.%s: %s" % [m, io.gps.send(m).inspect]
+        puts "io.gps.%s: %s" % [m, io.gps.send(m)]
       }
     end
     puts "EXIF infos: %s" % io.exif.infos.inspect if io.instance_variable_defined? '@exif'
     if io.instance_variable_defined? "@exif"
       io.exif.infos.map{|m|
-        puts "io.exif.%s: %s" % [m, io.exif.send(m).inspect]
+        puts "io.exif.%s: %s" % [m, io.exif.send(m)]
       }
     end
 
