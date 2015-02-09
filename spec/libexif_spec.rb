@@ -23,13 +23,11 @@ describe REXIF do
     end
 
     context "generic instance variables: verbose" do
-      it "default is disabled" do
+      it "Disabled if not specified" do
         img = REXIF::IMG.new("tests/IMG_2857.CR2")
         img.verbose.should == false
       end
-    end
-    context "generic instance variables: verbose" do
-      it "Enabled is asked for" do
+      it "Enabled if specified" do
         img = REXIF::IMG.new("tests/IMG_2857.CR2", true)
         img.verbose.should == true
       end
