@@ -3,7 +3,7 @@ require 'spec_helper'
 
 describe REXIF do
   before :all do
-    @files = ["tests/IMG_2857.CR2", "tests/IMG_8394.CR2", "tests/P1070309.JPG"]
+    @files = ["tests/lena_std.tiff", "tests/sample.tiff"]
 
   end
   before :each do
@@ -24,11 +24,11 @@ describe REXIF do
 
     context "generic instance variables: verbose" do
       it "Disabled if not specified" do
-        img = REXIF::IMG.new("tests/IMG_2857.CR2")
+        img = REXIF::IMG.new(@files.first)
         img.verbose.should == false
       end
       it "Enabled if specified" do
-        img = REXIF::IMG.new("tests/IMG_2857.CR2", true)
+        img = REXIF::IMG.new(@files.first, true)
         img.verbose.should == true
       end
     end
@@ -56,56 +56,12 @@ describe REXIF do
   end
 
   describe "Regression tests" do
-    context "CR2 from Canon 60D" do
-      it "exif data" do
-        @data[@files[0]].analyze()
-        EXPECTED_RESULTS[@files[0]]["exif"].map{|k, v|
-          @data[@files[0]].exif.send(k).should eql v
-        }
-      end
-      it "ifd0/ifd1/ifd2/ifd3 data" do
-        @data[@files[0]].analyze()
-        0.upto(3).map{|id|
-          EXPECTED_RESULTS[@files[0]]["ifd%d" % id].map{|k, v|
-            @data[@files[0]].instance_variable_get("@ifd%d" % id).send(k).should eql v
-          }
-        }
-      end
-    end
-    context "CR2 from Canon 6D" do
-      it "exif data" do
-        @data[@files[1]].analyze()
-        EXPECTED_RESULTS[@files[1]]["exif"].map{|k, v|
-          @data[@files[1]].exif.send(k).should eql v
-        }
-      end
-      it "ifd0/ifd1/ifd2/ifd3 data" do
-        @data[@files[1]].analyze()
-        0.upto(3).map{|id|
-          EXPECTED_RESULTS[@files[1]]["ifd%d" % id].map{|k, v|
-            @data[@files[1]].instance_variable_get("@ifd%d" % id).send(k).should eql v
-          }
-        }
-      end
-      it "gps data" do
-        @data[@files[1]].analyze()
-        EXPECTED_RESULTS[@files[1]]["gps"].map{|k, v|
-          @data[@files[1]].gps.send(k).should eql v
-        }
-      end
-    end
-    context "JPEG from Panasonic" do
-      it "exif data" do
-        @data[@files[2]].analyze()
-        EXPECTED_RESULTS[@files[2]]["exif"].map{|k, v|
-          @data[@files[2]].exif.send(k).should eql v
-        }
-      end
-      it "ifd0/ifd1" do
-        @data[@files[2]].analyze()
-        0.upto(1).map{|id|
-          EXPECTED_RESULTS[@files[2]]["ifd%d" % id].map{|k, v|
-            @data[@files[2]].instance_variable_get("@ifd%d" % id).send(k).should eql v
+    context "TIFF files" do
+      it "ifd0 data" do
+        @files.map{ |f|
+          @data[f].analyze()
+          EXPECTED_RESULTS[f]["ifd0"].map{|k, v|
+            @data[f].ifd0.send(k).should eql v
           }
         }
       end
