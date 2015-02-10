@@ -1,14 +1,13 @@
 # coding: utf-8
-$LOAD_PATH << "."
-require 'libEXIF'
+$LOAD_PATH << ".."
+require_relative '../libEXIF'
 require 'benchmark'
 
-$BENCH = false
-
-def run(filename)
+def run(filename, bench=nil)
   io = REXIF::IMG.new(filename, true)
   io.analyze()
-  if not $BENCH
+  if not bench
+
     # io.gps
     # io.exif
     # io.ifdX
@@ -74,14 +73,15 @@ end
 if __FILE__ == $0
   if ARGV.length > 0
     if ARGV[1] == "bench"
-      $BENCH = true
       Benchmark.bm(5) do |x|
         x.report("run libexif usecase test.rb"){
-          1000.times{run(ARGV[0])}
+          1000.times{run(ARGV[0]), true}
         }
       end
     else
       run(ARGV[0])
     end
+  else
+    puts "Usage: #{$0} <path_to_picture>"
   end
 end
