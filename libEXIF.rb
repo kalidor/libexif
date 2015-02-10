@@ -79,6 +79,7 @@ module REXIF
     def initialize(filename, verbose=false)
       [true, false, nil].include?(verbose) ? @verbose = verbose : @verbose = false
       init_var(filename)
+      init_methods()
     end
 
     # Analyze the file:
@@ -158,7 +159,6 @@ module REXIF
     def method_missing(m)
       raise NoMethodError, "Unknown method '%s'.\
 \nSee 'infos' instance variable to see what is available." % m.to_s
-      #puts "There's no method called #{m} here."
     end
 
     def init_var(filename)
@@ -171,6 +171,16 @@ module REXIF
       @small_preview = false
       @lossless_preview = false
       @rgb_uncompress_preview = false
+    end
+
+    def init_methods
+      %w[ifd0 ifd1 ifd2 ifd3 exif gps].map{|f|
+        self.class.instance_eval {
+          define_method(("%s?" % f.to_s).to_sym) do
+            false
+          end
+        }
+      }
     end
 
     def detect_endianess
@@ -419,9 +429,12 @@ module REXIF
     def gen_instance_variables
       @@DATA.keys.map do |key|
         instance_variable_set("@#{key.downcase}", Object.const_get(key.capitalize).new(@@DATA[key]))
+        self.class.instance_eval {
+          define_method(("%s?" % key.downcase).to_sym) do
+            true
+          end
+        }
       end
     end
-
   end
-
 end

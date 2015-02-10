@@ -47,6 +47,13 @@ describe REXIF do
           img.endianess.should eql EXPECTED_RESULTS[f]["endianess"]
         }
       end
+      it "ifd0? well defined (default: false, available: true)" do
+        @data.map{|f, img|
+          img.analyze()
+          img.ifd0?.should == true
+          img.ifd2?.should == false
+        }
+      end
     end
     context "Unknown method" do
       it "throws a NoMethodError if user call undefined method" do
