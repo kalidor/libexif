@@ -1,3 +1,4 @@
+# This file is part of libEXIF, a library to access stored data in picture.
 # coding: utf-8
 # (c) 2014-2015 G. Charbonneau
 # Published under the terms of WtfPLv2
