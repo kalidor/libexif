@@ -1,7 +1,7 @@
 # (c) 2014-2015 G. Charbonneau
 # Published under the terms of WtfPLv2
 
-BIG_ENDIAN = "MM*\x00"
+BIG_ENDIAN = "MM\x00*"
 LITTLE_ENDIAN = "II*\x00"
 
 BYTE = {:id => 0x01, :unit => 1}

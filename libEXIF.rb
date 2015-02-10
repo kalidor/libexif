@@ -12,17 +12,17 @@ require 'time'
 class PackSpec
   def initialize(endian)
     @packspec = [
-        nil,           # nothing (shouldn’t happen)
+        (endian == :little) ? 'v*' : 'N*', # only used to get IFD0 pointer
         'C*',           # BYTE (8-bit unsigned integer)
         nil,           # ASCII
-        (endian == :little) ? 'v*' : 'n*',        # SHORT (16-bit unsigned integer)
-        (endian == :little) ? 'V*' : 'N*',        # LONG (32-bit unsigned integer)
-        (endian == :little) ? 'V*' : 'N*',        # LONG (32-bit unsigned integer)
+        (endian == :little) ? 'v*' : 'n*', # SHORT (16-bit unsigned integer)
+        (endian == :little) ? 'V*' : 'N*', # LONG (32-bit unsigned integer)
+        (endian == :little) ? 'V*' : 'N*', # LONG (32-bit unsigned integer)
         'c*',           # SBYTE (8-bit signed integer)
         nil,           # UNDEFINED
-        (endian == :little) ? 'v*' : 'n*',        # SSHORT (16-bit unsigned integer)
-        (endian == :little) ? 'V*' : 'N*',        # SLONG (32-bit unsigned integer)
-        (endian == :little) ? 'V*' : 'N*',        # SRATIONAL (32-bit unsigned integer)
+        (endian == :little) ? 'v*' : 'n*', # SSHORT (16-bit unsigned integer)
+        (endian == :little) ? 'V*' : 'N*', # SLONG (32-bit unsigned integer)
+        (endian == :little) ? 'V*' : 'N*', # SRATIONAL (32-bit unsigned integer)
       ]
   end
 
@@ -188,6 +188,8 @@ module REXIF
         # move back to the previous position in case we read more bytes than
         # expected
         @io.seek(-block+index+4, IO::SEEK_CUR)
+      else
+        raise "Cannot detect endianess"
       end
       @packspec = PackSpec.new(@endianess)
       # we compute the tiff_header position (-4) (endianess x 2 + identifier)
@@ -195,7 +197,7 @@ module REXIF
       @TIFF_header_offset = @io.pos - 4
       # we get the IFD0_ENTRIES offset by reading the next 4 bytes taking care
       # to the endianess
-      @first_ifd_offset = @io.read(4).convert(@packspec, 3).first
+      @first_ifd_offset = @io.read(4).convert(@packspec, 0).first
     end
 
     # Get the count of IFD entries (Read and convert 2 bytes)
