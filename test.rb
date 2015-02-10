@@ -1,4 +1,4 @@
-#!/usr/bin/env ruby1.9
+# coding: utf-8
 $LOAD_PATH << "."
 require 'libEXIF'
 require 'benchmark'
