@@ -11,10 +11,10 @@ def run(filename, bench=nil)
     # io.gps
     # io.exif
     # io.ifdX
-    puts "[-] io.instance_variables:"
-    puts io.instance_variables.inspect
-    puts "[-] io.ifd0 method available:"
-    puts io.instance_variable_get("@ifd0").infos.inspect
+    if io.ifd0?
+      puts "[-] io.ifd0 method available:"
+      puts io.ifd0.infos.inspect
+    end
     0.upto(3).map{|id|
       if io.instance_variable_defined? "@ifd%d" % id
         io.instance_variable_get("@ifd%d" % id).infos.map{|m|
@@ -22,19 +22,20 @@ def run(filename, bench=nil)
         }
       end
     }
-    puts "GPS infos: %s" % io.gps.infos.inspect if io.instance_variable_defined? '@gps'
-    if io.instance_variable_defined? "@gps"
+    if io.gps?
+      puts "GPS infos: %s" % io.gps.infos.inspect
       io.gps.infos.map{|m|
         puts "io.gps.%s: %s" % [m, io.gps.send(m)]
       }
     end
-    puts "EXIF infos: %s" % io.exif.infos.inspect if io.instance_variable_defined? '@exif'
-    if io.instance_variable_defined? "@exif"
+    if io.exif?
+      puts "EXIF infos: %s" % io.exif.infos.inspect
       io.exif.infos.map{|m|
         puts "io.exif.%s: %s" % [m, io.exif.send(m)]
       }
     end
 
+    exit
     # puts io.extract_all()
     # or
     Dir.mkdir("extract") if not File.exist?("extract")
@@ -75,7 +76,7 @@ if __FILE__ == $0
     if ARGV[1] == "bench"
       Benchmark.bm(5) do |x|
         x.report("run libexif usecase test.rb"){
-          1000.times{run(ARGV[0]), true}
+          1000.times{run(ARGV[0], true)}
         }
       end
     else
