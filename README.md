@@ -45,7 +45,7 @@ Or you can do it dynamically:
 ```
 >if img.ifd0?
 >  img.ifd0.infos.map{|i|
->    puts "%s: %s" % img.ifd0.send(i).to_s
+>    puts "#{i}: %s" % img.ifd0.send(i).to_s
 >  }
 >end
 ImageWidth: 5472
