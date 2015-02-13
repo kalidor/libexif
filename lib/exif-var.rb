@@ -13,6 +13,9 @@ RATIONAL64U = {:id => 0x05, :unit => 8} # first is numerator, second is denomina
 UNDEF = {:id => 0x07, :unit => 4} # first is numerator, second is denominator
 RATIONAL64S = {:id => 0x0a, :unit => 8} # first is numerator, second is denominator
 
+class Exif < Template
+end
+
 EXIF = Hash.new
 EXIF["ExposureTime"] = {:id => 0x829a}
 EXIF["Copyright"] = {:id => 0x8298}

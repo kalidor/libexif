@@ -2,6 +2,9 @@
 # (c) 2014-2015 G. Charbonneau
 # Published under the terms of WtfPLv2
 
+class Gps < Template
+end
+
 GPS = Hash.new
 GPS["VersionId"] = {:id => 0x0000 }
 GPS["LatitudeRef"] = {:id => 0x0001 }

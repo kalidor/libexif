@@ -2,6 +2,18 @@
 # (c) 2014-2015 G. Charbonneau
 # Published under the terms of WtfPLv2
 
+class Ifd0 < Template
+end
+
+class Ifd1 < Template
+end
+
+class Ifd2 < Template
+end
+
+class Ifd3 < Template
+end
+
 IFD = Hash.new
 IFD["ImageWidth"] = {:id => 0x0100}
 IFD["ImageHeight"] = {:id => 0x0101}
