@@ -3,7 +3,7 @@
 # (c) 2014-2015 G. Charbonneau
 # Published under the terms of WtfPLv2
 
-$LOAD_PATH << "libEXIF"
+$LOAD_PATH << "lib"
 require 'time'
 %w[flash-var exif-var ifd-var gps-var].map{|f|
   require f
