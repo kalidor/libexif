@@ -31,6 +31,7 @@ Only declared EXIF data (see *-var.rb in libEXIF/) are supported. I will try to 
 #### EXIF data
 EXIF data 'section' are stored using a number X (ifdX). Sometimes EXIF identifier is the same, so to
 avoid overwriting previous EXIF data, the library keep the same idea:
+
 ```
 >img.ifd0?
 true
@@ -42,6 +43,7 @@ Canon EOS 6D
 ```
 
 Or you can do it dynamically:
+
 ```
 >if img.ifd0?
 >  img.ifd0.infos.map{|i|
