@@ -47,3 +47,24 @@ class Template
   end
 end
 
+def puts(str)
+  STDOUT.write("%s\n" % str)
+end
+def ddputs(str)
+  puts "[D] %s" % str if $DEBUG
+end
+def vputs(str)
+  puts "[+] %s" % str if @verbose
+end
+def dprint(str)
+  print "[+] %s" % str if @verbose
+end
+def eputs(str)
+  puts "[-] %s" % str
+end
+def puts_debug(var, str)
+  ddputs "*" * 20 + " DEBUG " + "*" * 20
+  ddputs "#{var}: %s" % str.unpack("H*").first.scan(/../).map{|c| "\\x"+c}.join("")
+  ddputs "#{var}: %d" % str.convert(@packspec, 5).first
+  ddputs "*" * 47
+end

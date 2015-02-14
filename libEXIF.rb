@@ -72,28 +72,6 @@ module REXIF
 
   private
 
-    def puts(str)
-      STDOUT.write("%s\n" % str)
-    end
-    def ddputs(str)
-      puts "[D] %s" % str if $DEBUG
-    end
-    def vputs(str)
-      puts "[+] %s" % str if @verbose
-    end
-    def dprint(str)
-      print "[+] %s" % str if @verbose
-    end
-    def eputs(str)
-      puts "[-] %s" % str
-    end
-    def puts_debug(var, str)
-      ddputs "*" * 20 + " DEBUG " + "*" * 20
-      ddputs "#{var}: %s" % str.unpack("H*").first.scan(/../).map{|c| "\\x"+c}.join("")
-      ddputs "#{var}: %d" % str.convert(@packspec, 5).first
-      ddputs "*" * 47
-    end
-
     def method_missing(m)
       raise NoMethodError, "Unknown method '%s'.\
 \nSee 'infos' instance variable to see what is available." % m.to_s
@@ -177,7 +155,6 @@ module REXIF
       end
       # Usually the ExifOffset is present in the first part
       if @@DATA["IFD0"].has_key? "ExifOffset"
-        # if yes, seek to the given offset
         @io.seek(@TIFF_header_offset + @@DATA["IFD0"]["ExifOffset"][:value], IO::SEEK_SET)
         next_IFD, @@DATA["EXIF"] = get_offset(expected_entries?, EXIF)
         i += 1
