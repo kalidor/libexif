@@ -178,6 +178,7 @@ module REXIF
           ddputs "Get Pointer: %s" % _data.unpack("H*").first.to_s
           _data = _data.convert(@packspec, 5).first
           data[key][:pointer] = _data
+          data[key][:exec] = entries[key][:exec] if entries[key].has_key?(:exec)
         end
         ddputs "%s : (type: %s, size: %s) %s" % [key, type, size, _data]
       end
@@ -212,39 +213,15 @@ module REXIF
             d = @io.read(8).convert(@packspec, entries[k][:type])
             m = @io.read(8).convert(@packspec, entries[k][:type])
             s = @io.read(8).convert(@packspec, entries[k][:type])
-            if s[0]/s[1] == 0
-              d = d.inject(:/).to_i
-              m = Rational(m[0], m[1]).to_f
-              s_sup = m % 1
-              s = (Rational(s[0], s[1]).to_f + s_sup) * 60
-              # See http://en.wikipedia.org/wiki/Geographic_coordinate_conversion
-              # and http://en.wikipedia.org/wiki/Geotagging#GPS_formats
-              geo = d + Rational((Rational(s.to_f,3600).to_f + m), 60).to_f
-              entries[k][:value] = "%d deg %d' %0.2f\" %%s (%%s%0.14f)" % [d, m.to_i, s, geo]
-              if entries.include?(k+"Ref")
-                ref = entries[k+"Ref"][:value]
-                entries[k][:value] = entries[k][:value] % [ref, ["S","W"].include?(ref) ? "-" : "+"]
-              end
+            if entries.include?(k + "Ref")
+              entries[k][:value] = entries[k][:exec].call(d, m, s, entries[k+"Ref"][:value])
             else
-              tmp = []
-              [d, m, s].map{|x|
-                tmp << Rational(x[0], x[1]).to_f
-              }
-              entries[k][:value] = tmp.join(":")
+              entries[k][:value] = entries[k][:exec].call(d, m, s)
             end
           when 4
-            foc = []
-            depth = []
-            [foc, depth].map{|t|
-              @io.read(entries[k][:size] * 4).unpack("L*").each_slice(2) do |n, d|
-                d == 0 ? t << 0 : t << n/d
-              end
-            }
-            if foc[0] == foc[1]
-              entries[k][:value] = "%dmm F%d-%d" % [[foc[0]].concat(depth)]
-            else
-              entries[k][:value] = "%d-%dmm F%d-%d" % foc.concat(depth)
-            end
+            foc = @io.read(entries[k][:size] * 4)
+            depth = @io.read(entries[k][:size] * 4)
+            entries[k][:value] = entries[k][:exec].call(foc, depth)
           end
         #else
         #  eputs "%s Unknown type" % entries[k][:type]

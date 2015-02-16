@@ -341,7 +341,21 @@ EXIF_VAR["SubjectDistanceRange"] = {:id => 0xa40c, :exec => proc{|v|
 EXIF_VAR["ImageUniqueID"] = {:id => 0xa420}
 EXIF_VAR["OwnerName"] = {:id => 0xa430}
 EXIF_VAR["SerialNumber"] = {:id => 0xa431}
-EXIF_VAR["LensInfo"] = {:id => 0xa432}
+EXIF_VAR["LensInfo"] = {:id => 0xa432, :exec => proc{|in1, in2|
+  foc = []
+  depth = []
+  [[foc,in1],[depth, in2]].map{|k, v|
+      v.unpack("L*").each_slice(2) do |n, d|
+      d == 0 ? k << 0 : k << n/d
+    end
+  }
+  if foc[0] == foc[1]
+    "%dmm F%d-%d" % [[foc[0]].concat(depth)]
+  else
+    "%d-%dmm F%d-%d" % foc.concat(depth)
+  end
+  }
+}
 EXIF_VAR["LensMake"] = {:id => 0xa433}
 EXIF_VAR["LensModel"] = {:id => 0xa434}
 EXIF_VAR["LensSerialNumber"] = {:id => 0xa435}
