@@ -166,7 +166,16 @@ module REXIF
           when UNDEF[:id] # fuck exif version type...
             _data = _data.to_i
           when INT16U[:id], INT32U[:id]
-            _data = _data.convert(@packspec, type).first.to_i
+            # Ugly stuff...
+            if size > 0x01
+              ddputs "Get Pointer: %s" % _data.unpack("H*").first.to_s
+              _data = _data.convert(@packspec, 5).first
+              data[key][:pointer] = _data
+              data[key][:exec] = entries[key][:exec] if entries[key].has_key?(:exec)
+              next
+            else
+              _data = _data.convert(@packspec, type).first.to_i
+            end
           when ASCII[:id]
             _data.each_byte{|c| c.chr }
           end
@@ -201,6 +210,9 @@ module REXIF
         case entries[k][:type]
         when ASCII[:id]
           entries[k][:value] = @io.read(entries[k][:size]).strip
+        when INT16U[:id]
+          entries[k][:value] = @io.read(entries[k][:size] * INT16U[:unit]).convert(@packspec, 3).join(" ")
+          #entries[k][:value] = @io.read(entries[k][:size]).convert(@packspec, 3).join(" ")
         when RATIONAL64U[:id], RATIONAL64S[:id]
           case entries[k][:size]
           when 1
