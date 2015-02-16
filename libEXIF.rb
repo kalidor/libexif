@@ -32,8 +32,8 @@ module REXIF
         if not @endianess
           detect_endianess()
           vputs "Endianess: " + @endianess.to_s
-          seek_IFD0_entries()
         end
+        seek_IFD0_entries()
         get_all_offsets()
         @@DATA.each do |k, v|
           get_values(v)
