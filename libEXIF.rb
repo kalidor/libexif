@@ -70,6 +70,9 @@ module REXIF
       ret
     end
 
+    def infos
+      %w[ifd0? ifd1?  ifd2?  ifd3? exif? gps?].map{|c| c.to_sym}
+    end
   private
 
     def method_missing(m)
