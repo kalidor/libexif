@@ -1,4 +1,4 @@
-# This file is part of libEXIF, a library to access stored data in picture.
+# This file is part of libEXIF_VAR, a library to access stored data in picture.
 # (c) 2014-2015 G. Charbonneau
 # Published under the terms of WtfPLv2
 
@@ -16,11 +16,11 @@ RATIONAL64S = {:id => 0x0a, :unit => 8} # first is numerator, second is denomina
 class Exif < Template
 end
 
-EXIF = Hash.new
-EXIF["ExposureTime"] = {:id => 0x829a}
-EXIF["Copyright"] = {:id => 0x8298}
-EXIF["FNumber"] = {:id => 0x829d}
-EXIF["ExposureProgram"]= {:id => 0x8822, :exec => proc{|v|
+EXIF_VAR = Hash.new
+EXIF_VAR["ExposureTime"] = {:id => 0x829a}
+EXIF_VAR["Copyright"] = {:id => 0x8298}
+EXIF_VAR["FNumber"] = {:id => 0x829d}
+EXIF_VAR["ExposureProgram"]= {:id => 0x8822, :exec => proc{|v|
   case v
   when 0
     "Undefined"
@@ -45,13 +45,13 @@ EXIF["ExposureProgram"]= {:id => 0x8822, :exec => proc{|v|
   end
   }
 }
-EXIF["ISOSpeedRatings"]= {:id => 0x8827}
-EXIF["ExifVersion"]= {:id => 0x9000}
-EXIF["SpectralSensitivity"] = {:id => 0x8824 }
-EXIF["GPSInfo"] = {:id => 0x8825 }
-EXIF["ISO"] = {:id => 0x8827 }
-EXIF["Opto-ElectricConvFactor"] = {:id => 0x8828 }
-EXIF["SensitivityType"] = {:id => 0x8830, :exec => proc{|v|
+EXIF_VAR["ISOSpeedRatings"]= {:id => 0x8827}
+EXIF_VAR["ExifVersion"]= {:id => 0x9000}
+EXIF_VAR["SpectralSensitivity"] = {:id => 0x8824 }
+EXIF_VAR["GPSInfo"] = {:id => 0x8825 }
+EXIF_VAR["ISO"] = {:id => 0x8827 }
+EXIF_VAR["Opto-ElectricConvFactor"] = {:id => 0x8828 }
+EXIF_VAR["SensitivityType"] = {:id => 0x8830, :exec => proc{|v|
   case v
   when 0
     "Unknown"
@@ -72,23 +72,23 @@ EXIF["SensitivityType"] = {:id => 0x8830, :exec => proc{|v|
   end
   }
 }
-EXIF["StandardOutputSensitivity"] = {:id => 0x8831 }
-EXIF["RecommendedExposureIndex"] = {:id => 0x8832 }
-EXIF["ISOSpeed"] = {:id => 0x8833 }
-EXIF["ISOSpeedLatitudeyyy"] = {:id => 0x8834 }
-EXIF["ISOSpeedLatitudezzz"] = {:id => 0x8835 }
-EXIF["ExifVersion"] = {:id => 0x9000 }
-EXIF["DateTimeOriginal"]= {:id => 0x9003}
-EXIF["CreateDate"]= {:id => 0x9004}
-EXIF["ComponentConfiguration"]= {:id => 0x9101}
-EXIF["CompressedBitsPerPixel"]= {:id => 0x9102}
-EXIF["ShutterSpeedValue"]= {:id => 0x9201}
-EXIF["ApertureValue"]= {:id => 0x9202}
-EXIF["BrightnessValue"]= {:id => 0x9203}
-EXIF["ExposureCompensation"]= {:id => 0x9204}
-EXIF["MaxApertureValue"]= {:id => 0x9205}
-EXIF["SubjectDistance"]= {:id => 0x9206}
-EXIF["MeteringMode"]= {:id => 0x9207, :exec => proc{|v|
+EXIF_VAR["StandardOutputSensitivity"] = {:id => 0x8831 }
+EXIF_VAR["RecommendedExposureIndex"] = {:id => 0x8832 }
+EXIF_VAR["ISOSpeed"] = {:id => 0x8833 }
+EXIF_VAR["ISOSpeedLatitudeyyy"] = {:id => 0x8834 }
+EXIF_VAR["ISOSpeedLatitudezzz"] = {:id => 0x8835 }
+EXIF_VAR["ExifVersion"] = {:id => 0x9000 }
+EXIF_VAR["DateTimeOriginal"]= {:id => 0x9003}
+EXIF_VAR["CreateDate"]= {:id => 0x9004}
+EXIF_VAR["ComponentConfiguration"]= {:id => 0x9101}
+EXIF_VAR["CompressedBitsPerPixel"]= {:id => 0x9102}
+EXIF_VAR["ShutterSpeedValue"]= {:id => 0x9201}
+EXIF_VAR["ApertureValue"]= {:id => 0x9202}
+EXIF_VAR["BrightnessValue"]= {:id => 0x9203}
+EXIF_VAR["ExposureCompensation"]= {:id => 0x9204}
+EXIF_VAR["MaxApertureValue"]= {:id => 0x9205}
+EXIF_VAR["SubjectDistance"]= {:id => 0x9206}
+EXIF_VAR["MeteringMode"]= {:id => 0x9207, :exec => proc{|v|
   case v
   when 0
     "Unknown"
@@ -109,7 +109,7 @@ EXIF["MeteringMode"]= {:id => 0x9207, :exec => proc{|v|
   end
   }
 }
-EXIF["LightSource"]= {:id => 0x9208, :exec => proc{|v|
+EXIF_VAR["LightSource"]= {:id => 0x9208, :exec => proc{|v|
   case v
   when 0
     "Unknown"
@@ -158,23 +158,23 @@ EXIF["LightSource"]= {:id => 0x9208, :exec => proc{|v|
   end
   }
 }
-EXIF["Flash"]= {:id => 0x9209, :exec => FLASH}
-EXIF["FocalLength"]= {:id => 0x920a}
-EXIF["SubjectArea"] = {:id => 0x9214}
-EXIF["MakerNotes"]= {:id => 0x927c}
-EXIF["UserComment"]= {:id => 0x9286}
-EXIF["SubSecTime"]= {:id => 0x9290}
-EXIF["SubSecTimeOriginal"]= {:id => 0x9291}
-EXIF["SubSecTimeDigitized"]= {:id => 0x9292}
-EXIF["FlashPixVersion"] = {:id => 0xa000}
-EXIF["ColorSpace"] = {:id => 0xa001}
-EXIF["ExifImageWidth"] = {:id => 0xa002}
-EXIF["ExifImageHeight"] = {:id => 0xa003}
-EXIF["RelatedSoundFile"] = {:id => 0xa004}
-EXIF["InteropOffset"] = {:id => 0xa005}
-EXIF["FocalPlaneXResolution"] = {:id => 0xa20e}
-EXIF["FocalPlaneYResolution"] = {:id => 0xa20f}
-EXIF["FocalPlaneResolutionUnit"] = {:id => 0xa210, :exec => proc{|v|
+EXIF_VAR["Flash"]= {:id => 0x9209, :exec => FLASH}
+EXIF_VAR["FocalLength"]= {:id => 0x920a}
+EXIF_VAR["SubjectArea"] = {:id => 0x9214}
+EXIF_VAR["MakerNotes"]= {:id => 0x927c}
+EXIF_VAR["UserComment"]= {:id => 0x9286}
+EXIF_VAR["SubSecTime"]= {:id => 0x9290}
+EXIF_VAR["SubSecTimeOriginal"]= {:id => 0x9291}
+EXIF_VAR["SubSecTimeDigitized"]= {:id => 0x9292}
+EXIF_VAR["FlashPixVersion"] = {:id => 0xa000}
+EXIF_VAR["ColorSpace"] = {:id => 0xa001}
+EXIF_VAR["ExifImageWidth"] = {:id => 0xa002}
+EXIF_VAR["ExifImageHeight"] = {:id => 0xa003}
+EXIF_VAR["RelatedSoundFile"] = {:id => 0xa004}
+EXIF_VAR["InteropOffset"] = {:id => 0xa005}
+EXIF_VAR["FocalPlaneXResolution"] = {:id => 0xa20e}
+EXIF_VAR["FocalPlaneYResolution"] = {:id => 0xa20f}
+EXIF_VAR["FocalPlaneResolutionUnit"] = {:id => 0xa210, :exec => proc{|v|
   case v
   when 1
     "None"
@@ -189,9 +189,9 @@ EXIF["FocalPlaneResolutionUnit"] = {:id => 0xa210, :exec => proc{|v|
   end
   }
 }
-EXIF["SubjectLocation"] = {:id => 0xa214}
-EXIF["ExposureIndex"] = {:id => 0xa215}
-EXIF["SensingMethod"] = {:id => 0xa217, :exec => proc{|v|
+EXIF_VAR["SubjectLocation"] = {:id => 0xa214}
+EXIF_VAR["ExposureIndex"] = {:id => 0xa215}
+EXIF_VAR["SensingMethod"] = {:id => 0xa217, :exec => proc{|v|
   case v
   when 1
     "Not defined "
@@ -210,7 +210,7 @@ EXIF["SensingMethod"] = {:id => 0xa217, :exec => proc{|v|
   end
   }
 }
-EXIF["FileSource"] = {:id => 0xa300, :exec => proc{|v|
+EXIF_VAR["FileSource"] = {:id => 0xa300, :exec => proc{|v|
   case v
   when 1
     "Film Scanner "
@@ -222,7 +222,7 @@ EXIF["FileSource"] = {:id => 0xa300, :exec => proc{|v|
   end
   }
 }
-EXIF["SceneType"] = {:id => 0xa301, :exec => proc{|v|
+EXIF_VAR["SceneType"] = {:id => 0xa301, :exec => proc{|v|
   case v
   when 1
     "Directly photographed"
@@ -231,8 +231,8 @@ EXIF["SceneType"] = {:id => 0xa301, :exec => proc{|v|
   end
   }
 }
-EXIF["CFAPattern"] = {:id => 0xa302 }
-EXIF["CustomeRendered"] = {:id => 0xa401, :exec => proc{|v|
+EXIF_VAR["CFAPattern"] = {:id => 0xa302 }
+EXIF_VAR["CustomeRendered"] = {:id => 0xa401, :exec => proc{|v|
   case v
   when 0
     "Normal"
@@ -241,7 +241,7 @@ EXIF["CustomeRendered"] = {:id => 0xa401, :exec => proc{|v|
   end
   }
 }
-EXIF["ExposureMode"] = {:id => 0xa402, :exec => proc{|v|
+EXIF_VAR["ExposureMode"] = {:id => 0xa402, :exec => proc{|v|
   case v
   when 0
     "Auto"
@@ -252,7 +252,7 @@ EXIF["ExposureMode"] = {:id => 0xa402, :exec => proc{|v|
   end
   }
 }
-EXIF["WhiteBalance"] = {:id => 0xa403, :exec => proc{|v|
+EXIF_VAR["WhiteBalance"] = {:id => 0xa403, :exec => proc{|v|
   case v
   when 0
     "Auto"
@@ -261,9 +261,9 @@ EXIF["WhiteBalance"] = {:id => 0xa403, :exec => proc{|v|
   end
   }
 }
-EXIF["DigitalZoomRatio"] = {:id => 0xa404}
-EXIF["FocalLengthIn35mmFormat"] = {:id => 0xa405}
-EXIF["SceneCaptureType"] = {:id => 0xa406, :exec => proc{|v|
+EXIF_VAR["DigitalZoomRatio"] = {:id => 0xa404}
+EXIF_VAR["FocalLengthIn35mmFormat"] = {:id => 0xa405}
+EXIF_VAR["SceneCaptureType"] = {:id => 0xa406, :exec => proc{|v|
   case v
   when 0
     "Standard"
@@ -276,7 +276,7 @@ EXIF["SceneCaptureType"] = {:id => 0xa406, :exec => proc{|v|
   end
   }
 }
-EXIF["GainControl"] = {:id => 0xa407, :exec => proc{|v|
+EXIF_VAR["GainControl"] = {:id => 0xa407, :exec => proc{|v|
   case v
   when 0
     "None"
@@ -291,7 +291,7 @@ EXIF["GainControl"] = {:id => 0xa407, :exec => proc{|v|
   end
   }
 }
-EXIF["Contrast"] = {:id => 0xa408, :exec => proc{|v|
+EXIF_VAR["Contrast"] = {:id => 0xa408, :exec => proc{|v|
   case v
   when 0
     "Normal"
@@ -302,7 +302,7 @@ EXIF["Contrast"] = {:id => 0xa408, :exec => proc{|v|
   end
   }
 }
-EXIF["Saturation"] = {:id => 0xa409, :exec => proc{|v|
+EXIF_VAR["Saturation"] = {:id => 0xa409, :exec => proc{|v|
   case v
   when 0
     "Normal"
@@ -313,7 +313,7 @@ EXIF["Saturation"] = {:id => 0xa409, :exec => proc{|v|
   end
   }
 }
-EXIF["Sharpness"] = {:id => 0xa40a, :exec => proc{|v|
+EXIF_VAR["Sharpness"] = {:id => 0xa40a, :exec => proc{|v|
   case v
   when 0
     "Normal"
@@ -324,8 +324,8 @@ EXIF["Sharpness"] = {:id => 0xa40a, :exec => proc{|v|
   end
   }
 }
-EXIF["DeviceSettingDescripion"] = {:id => 0xa40b}
-EXIF["SubjectDistanceRange"] = {:id => 0xa40c, :exec => proc{|v|
+EXIF_VAR["DeviceSettingDescripion"] = {:id => 0xa40b}
+EXIF_VAR["SubjectDistanceRange"] = {:id => 0xa40c, :exec => proc{|v|
   case v
   when 0
     "Unknown"
@@ -338,10 +338,18 @@ EXIF["SubjectDistanceRange"] = {:id => 0xa40c, :exec => proc{|v|
   end
   }
 }
-EXIF["ImageUniqueID"] = {:id => 0xa420}
-EXIF["OwnerName"] = {:id => 0xa430}
-EXIF["SerialNumber"] = {:id => 0xa431}
-EXIF["LensInfo"] = {:id => 0xa432}
-EXIF["LensMake"] = {:id => 0xa433}
-EXIF["LensModel"] = {:id => 0xa434}
-EXIF["LensSerialNumber"] = {:id => 0xa435}
+EXIF_VAR["ImageUniqueID"] = {:id => 0xa420}
+EXIF_VAR["OwnerName"] = {:id => 0xa430}
+EXIF_VAR["SerialNumber"] = {:id => 0xa431}
+EXIF_VAR["LensInfo"] = {:id => 0xa432}
+EXIF_VAR["LensMake"] = {:id => 0xa433}
+EXIF_VAR["LensModel"] = {:id => 0xa434}
+EXIF_VAR["LensSerialNumber"] = {:id => 0xa435}
+
+module EXIF
+  def exif_analyze(offset, data)
+    @io.seek(@TIFF_header_offset + data["IFD0"]["ExifOffset"][:value], IO::SEEK_SET)
+    offset, data["EXIF"] = get_offset(expected_entries?, EXIF_VAR)
+    offset = offset.convert(@packspec, 5).first
+  end
+end

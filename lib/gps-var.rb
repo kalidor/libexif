@@ -5,13 +5,13 @@
 class Gps < Template
 end
 
-GPS = Hash.new
-GPS["VersionId"] = {:id => 0x0000 }
-GPS["LatitudeRef"] = {:id => 0x0001 }
-GPS["Latitude"] = {:id => 0x0002 }
-GPS["LongitudeRef"] = {:id => 0x0003 }
-GPS["Longitude"] = {:id => 0x0004 }
-GPS["AltitudeRef"] = {:id => 0x0005, :exec => proc{|v|
+GPS_VAR = Hash.new
+GPS_VAR["VersionId"] = {:id => 0x0000 }
+GPS_VAR["LatitudeRef"] = {:id => 0x0001 }
+GPS_VAR["Latitude"] = {:id => 0x0002 }
+GPS_VAR["LongitudeRef"] = {:id => 0x0003 }
+GPS_VAR["Longitude"] = {:id => 0x0004 }
+GPS_VAR["AltitudeRef"] = {:id => 0x0005, :exec => proc{|v|
   case v
   when 0, "0"
     "Above sea level (0)"
@@ -20,10 +20,10 @@ GPS["AltitudeRef"] = {:id => 0x0005, :exec => proc{|v|
   end
   }
 }
-GPS["Altitude"] = {:id => 0x0006 }
-GPS["TimeStamp"] = {:id => 0x0007 }
-GPS["Satellites"] = {:id => 0x0008 }
-GPS["Status"] = {:id => 0x0009, :exec => proc{|v|
+GPS_VAR["Altitude"] = {:id => 0x0006 }
+GPS_VAR["TimeStamp"] = {:id => 0x0007 }
+GPS_VAR["Satellites"] = {:id => 0x0008 }
+GPS_VAR["Status"] = {:id => 0x0009, :exec => proc{|v|
   case v
   when "A"
     "Measurement Active"
@@ -32,7 +32,15 @@ GPS["Status"] = {:id => 0x0009, :exec => proc{|v|
   end
   }
 }
-GPS["MeasureMode"] = {:id => 0x000a }
-GPS["DOP"] = {:id => 0x000b }
-GPS["MapDatum"] = {:id => 0x0012 }
-GPS["DateStamp"] = {:id => 0x001d }
+GPS_VAR["MeasureMode"] = {:id => 0x000a }
+GPS_VAR["DOP"] = {:id => 0x000b }
+GPS_VAR["MapDatum"] = {:id => 0x0012 }
+GPS_VAR["DateStamp"] = {:id => 0x001d }
+
+module GPS
+  def gps_analyze(offset, data)
+    @io.seek(@TIFF_header_offset + data["IFD0"]["GPSInfo"][:value], IO::SEEK_SET)
+    offset, data["GPS"] = get_offset(expected_entries?, GPS_VAR)
+    offset = offset.convert(@packspec, 5).first
+  end
+end

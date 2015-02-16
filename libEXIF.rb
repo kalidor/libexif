@@ -12,6 +12,9 @@ require 'time'
 # REXIF module
 module REXIF
   class IMG
+    include IFD
+    include EXIF
+    include GPS
     attr_reader :gps, :ifd0, :ifd1, :ifd2, :ifd3, :exif
     attr_reader :verbose, :filename, :endianess
     def initialize(filename, verbose=false)
@@ -29,12 +32,9 @@ module REXIF
       vputs "Analysing: %s" % filename
       File.open(@filename, "rb") do |io|
         @io = io
-        if not @endianess
-          detect_endianess()
-          vputs "Endianess: " + @endianess.to_s
-        end
-        seek_IFD0_entries()
-        get_all_offsets()
+        offset = detect_endianess()
+        vputs "Endianess: " + @endianess.to_s
+        get_all_offsets(offset)
         @@DATA.each do |k, v|
           get_values(v)
         end
@@ -124,9 +124,9 @@ module REXIF
       # we compute the tiff_header position (-4) (endianess x 2 + identifier)
       # in order to seek from here to the IFD0 offset
       @TIFF_header_offset = @io.pos - 4
-      # we get the IFD0_ENTRIES offset by reading the next 4 bytes taking care
+      # we return the IFD0_ENTRIES offset by reading the next 4 bytes taking care
       # to the endianess
-      @first_ifd_offset = @io.read(4).convert(@packspec, 0).first
+      @io.read(4).convert(@packspec, 0).first
     end
 
     # Get the count of IFD entries (Read and convert 2 bytes)
@@ -137,35 +137,12 @@ module REXIF
       return expected_entries
     end
 
-    def seek_IFD0_entries
-      vputs "IFD0_entries offset: %s" % @first_ifd_offset.to_s(16)
-      # and seek to the target offset given by the 4 bytes after tiff header
-      @io.seek(@TIFF_header_offset + @first_ifd_offset, IO::SEEK_SET)
-    end
-
-    def get_all_offsets
-      next_IFD, @@DATA["IFD%d" % 0] = get_offset(expected_entries?, IFD)
-      next_IFD = next_IFD.convert(@packspec, 5).first
-      i = 1
-      # Each IFD (IFD0 to IFD3) has potential pointer to the next one
-      # last one is 0x0000
-      while next_IFD != 0
-        ddputs " -- Jumping to the next hop (%04s) --" % next_IFD.to_s(16)
-        @io.seek(@TIFF_header_offset + next_IFD , IO::SEEK_SET)
-        next_IFD, @@DATA["IFD%d" % i] = get_offset(expected_entries?, IFD)
-        next_IFD = next_IFD.convert(@packspec, 5).first
-        i += 1
-      end
+    def get_all_offsets(offset)
+      vputs "IFD0_entries offset: %s" % offset.to_s(16)
+      i = ifd_analyze(offset, @@DATA)
       # Usually the ExifOffset is present in the first part
-      if @@DATA["IFD0"].has_key? "ExifOffset"
-        @io.seek(@TIFF_header_offset + @@DATA["IFD0"]["ExifOffset"][:value], IO::SEEK_SET)
-        next_IFD, @@DATA["EXIF"] = get_offset(expected_entries?, EXIF)
-        i += 1
-      end
-      if @@DATA["IFD0"].has_key? "GPSInfo"
-        @io.seek(@TIFF_header_offset + @@DATA["IFD0"]["GPSInfo"][:value], IO::SEEK_SET)
-        next_IFD, @@DATA["GPS"] = get_offset(expected_entries?, GPS)
-      end
+      exif_analyze(offset, @@DATA) if @@DATA["IFD0"].has_key? "ExifOffset"
+      gps_analyze(offset, @@DATA) if @@DATA["IFD0"].has_key? "GPSInfo"
     end
 
     # Get and convert the entries offset

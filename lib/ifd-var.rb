@@ -14,11 +14,11 @@ end
 class Ifd3 < Template
 end
 
-IFD = Hash.new
-IFD["ImageWidth"] = {:id => 0x0100}
-IFD["ImageHeight"] = {:id => 0x0101}
-IFD["BitsPerSample"] = {:id => 0x0102}
-IFD["Compression"] = {:id => 0x0103, :exec => proc{|v|
+IFD_VAR = Hash.new
+IFD_VAR["ImageWidth"] = {:id => 0x0100}
+IFD_VAR["ImageHeight"] = {:id => 0x0101}
+IFD_VAR["BitsPerSample"] = {:id => 0x0102}
+IFD_VAR["Compression"] = {:id => 0x0103, :exec => proc{|v|
   case v
   when 1
     "Uncompressed"
@@ -103,14 +103,14 @@ IFD["Compression"] = {:id => 0x0103, :exec => proc{|v|
   end
   }
 }
-IFD["PhotometricInterpretation"] = {:id => 0x0106}
-IFD["ImageDescription"] = {:id => 0x010e}
-IFD["Make"] = {:id => 0x010f}
-IFD["Model"] = {:id => 0x0110}
-IFD["PreviewImageStart"] = {:id => 0x0111}
-IFD["SamplesPerPixel"] = {:id => 0x0115}
-IFD["RowsPerStrip"] = {:id => 0x0116}
-IFD["Orientation"] = {:id => 0x0112, :exec => proc{|v|
+IFD_VAR["PhotometricInterpretation"] = {:id => 0x0106}
+IFD_VAR["ImageDescription"] = {:id => 0x010e}
+IFD_VAR["Make"] = {:id => 0x010f}
+IFD_VAR["Model"] = {:id => 0x0110}
+IFD_VAR["PreviewImageStart"] = {:id => 0x0111}
+IFD_VAR["SamplesPerPixel"] = {:id => 0x0115}
+IFD_VAR["RowsPerStrip"] = {:id => 0x0116}
+IFD_VAR["Orientation"] = {:id => 0x0112, :exec => proc{|v|
   case v
   when 1
     "Horizontal"
@@ -131,10 +131,10 @@ IFD["Orientation"] = {:id => 0x0112, :exec => proc{|v|
   end
   }
 }
-IFD["PreviewImageLength"] = {:id => 0x0117}
-IFD["XResolution"] = {:id => 0x011a}
-IFD["YResolution"] = {:id => 0x011b}
-IFD["PlanarConfiguration"] = {:id => 0x011c, :exec => proc{|v|
+IFD_VAR["PreviewImageLength"] = {:id => 0x0117}
+IFD_VAR["XResolution"] = {:id => 0x011a}
+IFD_VAR["YResolution"] = {:id => 0x011b}
+IFD_VAR["PlanarConfiguration"] = {:id => 0x011c, :exec => proc{|v|
   case v
   when 1
     "Chunky"
@@ -143,7 +143,7 @@ IFD["PlanarConfiguration"] = {:id => 0x011c, :exec => proc{|v|
   end
   }
 }
-IFD["ResolutionUnit"] = {:id => 0x0128, :exec => proc{|v|
+IFD_VAR["ResolutionUnit"] = {:id => 0x0128, :exec => proc{|v|
   case v
   when 1
     "None"
@@ -155,15 +155,15 @@ IFD["ResolutionUnit"] = {:id => 0x0128, :exec => proc{|v|
   }
 }
 
-IFD["Software"] = {:id => 0x0131}
-IFD["ModifyDate"] = {:id => 0x0132}
-IFD["Artist"] = {:id => 0x013b}
-IFD["WhitePoint"] = {:id => 0x013e}
-IFD["PrimaryChromaticities"] = {:id => 0x013f}
-IFD["ThumbnailOffset"] = {:id => 0x0201}
-IFD["ThumbnailLength"] = {:id => 0x0202}
-IFD["YCbCrCoefficients"] = {:id => 0x0211}
-IFD["YCbCrPositioning"] = {:id => 0x0213, :exec => proc{|v|
+IFD_VAR["Software"] = {:id => 0x0131}
+IFD_VAR["ModifyDate"] = {:id => 0x0132}
+IFD_VAR["Artist"] = {:id => 0x013b}
+IFD_VAR["WhitePoint"] = {:id => 0x013e}
+IFD_VAR["PrimaryChromaticities"] = {:id => 0x013f}
+IFD_VAR["ThumbnailOffset"] = {:id => 0x0201}
+IFD_VAR["ThumbnailLength"] = {:id => 0x0202}
+IFD_VAR["YCbCrCoefficients"] = {:id => 0x0211}
+IFD_VAR["YCbCrPositioning"] = {:id => 0x0213, :exec => proc{|v|
   case v
   when 1
     "Centere"
@@ -172,7 +172,22 @@ IFD["YCbCrPositioning"] = {:id => 0x0213, :exec => proc{|v|
   end
   }
 }
-IFD["ReferenceBlackWhite"] = {:id => 0x0214}
-IFD["Copyright"] = {:id => 0x8298}
-IFD["ExifOffset"] = {:id => 0x8769}
-IFD["GPSInfo"] = {:id => 0x8825}
+IFD_VAR["ReferenceBlackWhite"] = {:id => 0x0214}
+IFD_VAR["Copyright"] = {:id => 0x8298}
+IFD_VAR["ExifOffset"] = {:id => 0x8769}
+IFD_VAR["GPSInfo"] = {:id => 0x8825}
+ 
+module IFD
+  def ifd_analyze(offset, data)
+    i = 0
+    ## Each IFD (IFD0 to IFD3) has potential pointer to the next one
+    ## last one is 0x0000
+    while offset != 0 
+      @io.seek(@TIFF_header_offset + offset , IO::SEEK_SET)
+      offset, data["IFD%d" % i] = get_offset(expected_entries?, IFD_VAR)
+      offset = offset.convert(@packspec, 5).first
+      i += 1
+    end
+    i
+  end
+end
