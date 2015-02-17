@@ -149,6 +149,17 @@ module REXIF
     # Depends on the previously detected endianess
     def get_offset(expected_content, entries)
       data = Hash.new
+      def set_value(var, key, data, val)
+        ddputs "%s: Direct value detected" % val
+        val.strip! if val.class == String
+        data[key][:value] = (var.has_key?(:exec)) ? var[:exec].call(val) : val
+      end
+      def set_ptr(var, key, data, val)
+        ddputs "Get Pointer: %s" % val.unpack("H*").first.to_s
+        val = val.convert(@packspec, 5).first
+        data[key][:pointer] = val
+        data[key][:exec] = var[:exec] if var.has_key?(:exec)
+      end
       while expected_content > 0
         expected_content -= 1
         id, type, size, _data = readblock()
@@ -159,35 +170,31 @@ module REXIF
         end
         key = key[0]
         data[key] = {:size => size, :pointer => nil, :value => nil, :type => type}
-        if [0x01, 0x02, 0x03, 0x04, 0x07].include?(type) and size <= 0x04
-          case type
-          when BYTE[:id]
+        # if size > 4, it's a pointer to the data
+        if size <= 0x04
+          case
+          when type == BYTE[:id] #1
             _data = _data.convert(@packspec, type).delete_if{|v| v==0}.join(".")
-          when UNDEF[:id] # fuck exif version type...
-            _data = _data.to_i
-          when INT16U[:id], INT32U[:id]
-            # Ugly stuff...
-            if size > 0x01
-              ddputs "Get Pointer: %s" % _data.unpack("H*").first.to_s
-              _data = _data.convert(@packspec, 5).first
-              data[key][:pointer] = _data
-              data[key][:exec] = entries[key][:exec] if entries[key].has_key?(:exec)
-              next
-            else
-              _data = _data.convert(@packspec, type).first.to_i
-            end
-          when ASCII[:id]
+            set_value(entries[key], key, data, _data)
+          when type == ASCII[:id] #2
             _data.each_byte{|c| c.chr }
+            set_value(entries[key], key, data, _data)
+          when [INT16U[:id], INT32U[:id]].include?(type) && size > 0x01 # 3 and 4
+            set_ptr(entries[key], key, data, _data)
+          when [INT16U[:id], INT32U[:id]].include?(type) # 3 and 4
+            _data = _data.convert(@packspec, type).first.to_i
+            set_value(entries[key], key, data, _data)
+          when type == UNDEF[:id] # fuck exif version type... # 7
+            _data = _data.to_i
+            set_value(entries[key], key, data, _data)
+          else
+            # If type was not found, this means it's a pointer
+            # Some pointer has size of 1...
+            set_ptr(entries[key], key, data, _data)
           end
-          ddputs "%s: Direct value detected" % _data
-          _data.strip! if _data.class == String
-          data[key][:value] = (entries[key].has_key?(:exec)) ? entries[key][:exec].call(_data) : _data
         else
-        # _data is a pointer to the value
-          ddputs "Get Pointer: %s" % _data.unpack("H*").first.to_s
-          _data = _data.convert(@packspec, 5).first
-          data[key][:pointer] = _data
-          data[key][:exec] = entries[key][:exec] if entries[key].has_key?(:exec)
+          # _data is a pointer to the value
+          set_ptr(entries[key], key, data, _data)
         end
         ddputs "%s : (type: %s, size: %s) %s" % [key, type, size, _data]
       end
