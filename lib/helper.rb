@@ -68,3 +68,14 @@ def puts_debug(var, str)
   ddputs "#{var}: %d" % str.convert(@packspec, 5).first
   ddputs "*" * 47
 end
+def set_value(var, key, data, val)
+  ddputs "%s: Direct value detected" % val
+  val.strip! if val.class == String
+  data[key][:value] = (var.has_key?(:exec)) ? var[:exec].call(val) : val
+end
+def set_ptr(var, key, data, val)
+  ddputs "Get Pointer: %s" % val.unpack("H*").first.to_s
+  val = val.convert(@packspec, 5).first
+  data[key][:pointer] = val
+  data[key][:exec] = var[:exec] if var.has_key?(:exec)
+end
