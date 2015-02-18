@@ -4,7 +4,7 @@ Pure ruby library to get EXIF data in a picture. Thumbnail and image extraction 
 Existing gem did not returned what I was looking for, so I decide to try to do my own.
 (warning: I'm not a developer, if you have any advice/remarks/suggestions, please let me know.)
 
-Only declared EXIF data (see *-var.rb in libEXIF/) are supported. I will try to add more.
+Only declared EXIF data (see *-var.rb in lib/) are supported. I will try to add more.
 
 ### Sample
 ```
