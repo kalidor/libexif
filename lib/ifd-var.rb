@@ -188,6 +188,5 @@ module IFD
       offset = offset.convert(@packspec, 5).first
       i += 1
     end
-    i
   end
 end

@@ -139,7 +139,7 @@ module REXIF
 
     def get_all_offsets(offset)
       vputs "IFD0_entries offset: %s" % offset.to_s(16)
-      i = ifd_analyze(offset, @@DATA)
+      ifd_analyze(offset, @@DATA)
       # Usually the ExifOffset is present in the first part
       exif_analyze(offset, @@DATA) if @@DATA["IFD0"].has_key? "ExifOffset"
       gps_analyze(offset, @@DATA) if @@DATA["IFD0"].has_key? "GPSInfo"
