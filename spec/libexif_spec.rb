@@ -47,11 +47,16 @@ describe REXIF do
           img.endianess.should eql EXPECTED_RESULTS[f]["endianess"]
         }
       end
+      it "Defined variables" do
+        @data.map{|f, img|
+          img.analyze()
+          img.infos.should == [:ifd0?]
+        }
+      end
       it "ifd0? well defined (default: false, available: true)" do
         @data.map{|f, img|
           img.analyze()
           img.ifd0?.should == true
-          img.ifd2?.should == false
         }
       end
     end

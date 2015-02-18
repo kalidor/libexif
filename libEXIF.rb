@@ -20,7 +20,6 @@ module REXIF
     def initialize(filename, verbose=false)
       [true, false, nil].include?(verbose) ? @verbose = verbose : @verbose = false
       init_var(filename)
-      init_methods()
     end
 
     # Analyze the file:
@@ -70,9 +69,6 @@ module REXIF
       ret
     end
 
-    def infos
-      %w[ifd0? ifd1?  ifd2?  ifd3? exif? gps?].map{|c| c.to_sym}
-    end
   private
 
     def method_missing(m)
@@ -90,16 +86,6 @@ module REXIF
       @small_preview = false
       @lossless_preview = false
       @rgb_uncompress_preview = false
-    end
-
-    def init_methods
-      %w[ifd0 ifd1 ifd2 ifd3 exif gps].map{|f|
-        self.class.instance_eval {
-          define_method(("%s?" % f.to_s).to_sym) do
-            false
-          end
-        }
-      }
     end
 
     def detect_endianess
@@ -307,13 +293,18 @@ module REXIF
 
     # Generate instance variables name for each kind of info available in the picture
     def gen_instance_variables
+      def infos
+        @@DATA.keys.map{|c| (c.downcase+"?").to_sym}
+      end
       @@DATA.keys.map do |key|
         instance_variable_set("@#{key.downcase}", Object.const_get(key.capitalize).new(@@DATA[key]))
-        self.class.instance_eval {
-          define_method(("%s?" % key.downcase).to_sym) do
-            true
-          end
-        }
+        if %w[ifd0 ifd1 ifd2 ifd3 exif gps].include? key.downcase
+          self.class.instance_eval {
+            define_method(("%s?" % key.downcase).to_sym) do
+              true
+            end
+          }
+        end
       end
     end
   end
