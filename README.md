@@ -2,6 +2,7 @@
 Pure ruby library to get EXIF data in a picture. Thumbnail and image extraction are also supported.
 --
 /!\ For now, JPEG and CR2 format are supported.
+
 Existing gem did not returned what I was looking for, so I decide to try to do my own.
 (warning: I'm not a developer, if you have any advice/remarks/suggestions, please let me know.)
 
