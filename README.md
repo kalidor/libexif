@@ -7,19 +7,19 @@ Existing gem did not returned what I was looking for, so I decide to try to do m
 Only declared EXIF data (see *-var.rb in lib/) are supported. I will try to add more.
 
 ### Sample
-```
+```ruby
 >img = REXIF::IMG.new('my_picture.CR2')
 >img.analyze()
 ```
 
 #### interesting instance variables
-```
+```ruby
 >img.filename   # filename...
 >img.endianess  # endianess (:big or :little)
 ```
 
 #### If the picture contains embedded thumbnail (here is output of .CR2 file)
-```
+```ruby
 >img.extract_thumbnail()              # available if thumbnail are contains in the file
 >img.extract_preview()                # available if preview are contains in the file
 >img.extract_lossless_preview()       # and so on
@@ -32,7 +32,7 @@ Only declared EXIF data (see *-var.rb in lib/) are supported. I will try to add 
 EXIF data 'section' are stored using a number X (ifdX). Sometimes EXIF identifier is the same, so to
 avoid overwriting previous EXIF data, the library keep the same idea:
 
-```
+```ruby
 >img.ifd0?
 true
 >img.ifd0.infos
@@ -44,7 +44,7 @@ Canon EOS 6D
 
 Or you can do it dynamically:
 
-```
+```ruby
 >if img.ifd0?
 >  img.ifd0.infos.map{|i|
 >    puts "#{i}: %s" % img.ifd0.send(i).to_s
