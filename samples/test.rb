@@ -35,7 +35,6 @@ def run(filename, bench=nil)
       }
     end
 
-    exit
     # puts io.extract_all()
     # or
     Dir.mkdir("extract") if not File.exist?("extract")
