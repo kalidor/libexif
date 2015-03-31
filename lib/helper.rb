@@ -3,6 +3,8 @@
 # (c) 2014-2015 G. Charbonneau
 # Published under the terms of WtfPLv2
 
+KNOWN_META = %w[ifd0 ifd1 ifd2 ifd3 exif gps]
+
 class PackSpec
   def initialize(endian)
     @packspec = [

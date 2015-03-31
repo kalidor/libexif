@@ -296,16 +296,24 @@ module REXIF
       def infos
         @@DATA.keys.map{|c| (c.downcase+"?").to_sym}
       end
-      @@DATA.keys.map do |key|
-        instance_variable_set("@#{key.downcase}", Object.const_get(key.capitalize).new(@@DATA[key]))
-        if %w[ifd0 ifd1 ifd2 ifd3 exif gps].include? key.downcase
+      dk = @@DATA.keys.map{|c| c.downcase}
+      # unavailable methods will return nil
+      (KNOWN_META - dk).map{|k|
+        self.class.instance_eval {
+          define_method(("%s?" % k).to_sym) do
+            nil
+          end
+        }
+      }
+      # available methods will return what they supposed to return
+      (KNOWN_META & dk).map{|k|
+        instance_variable_set("@#{k}", Object.const_get(k.capitalize).new(@@DATA[k.upcase]))
           self.class.instance_eval {
-            define_method(("%s?" % key.downcase).to_sym) do
+            define_method(("%s?" % k).to_sym) do
               true
             end
           }
-        end
-      end
+        }
     end
   end
 end
