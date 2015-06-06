@@ -350,7 +350,7 @@ EXIF_VAR["LensInfo"] = {:id => 0xa432, :exec => proc{|in1, in2|
     end
   }
   if foc[0] == foc[1]
-    "%dmm F%d-%d" % [[foc[0]].concat(depth)]
+    "%dmm F%d-%d" % [foc[0]].concat(depth)
   else
     "%d-%dmm F%d-%d" % foc.concat(depth)
   end
