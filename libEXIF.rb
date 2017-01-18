@@ -3,9 +3,9 @@
 # (c) 2014-2015 G. Charbonneau
 # Published under the terms of WtfPLv2
 
-$LOAD_PATH << "lib"
+$LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), "lib"))
 require 'time'
-%w[helper flash-var exif-var ifd-var gps-var].map{|f|
+%w[helper header-var flash-var exif-var ifd-var gps-var].map{|f|
   require f
 }
 
