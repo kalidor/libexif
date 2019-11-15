@@ -18,6 +18,10 @@ module REXIF
     attr_reader :gps, :ifd0, :ifd1, :ifd2, :ifd3, :exif
     attr_reader :verbose, :filename, :endianess
     def initialize(filename, verbose=false)
+      if not File.exists?(filename)
+        eputs("File not found. Check the path and retry")
+        return
+      end
       [true, false, nil].include?(verbose) ? @verbose = verbose : @verbose = false
       init_var(filename)
     end
