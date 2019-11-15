@@ -64,7 +64,7 @@ module REXIF
       @rgb_uncompress_preview
     end
 
-    def extract_all(path="./")
+    def extract_all(path=nil)
       ret = []
       ret << extract_thumbnail(path) if defined? extract_thumbnail
       ret << extract_small_preview(path) if defined? extract_small_preview
