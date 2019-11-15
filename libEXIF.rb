@@ -116,7 +116,9 @@ module REXIF
       @TIFF_header_offset = @io.pos - 4
       # we return the IFD0_ENTRIES offset by reading the next 4 bytes taking care
       # to the endianess
-      @io.read(4).convert(@packspec, 0).first
+      # This part is big-endian
+      # == @io.read(4).unpack("H*").first.scan(/(..)(..)(..)(..)/).map(&:reverse).join.to_i(16)
+      return @io.read(4).unpack("V*").first
     end
 
     # Get the count of IFD entries (Read and convert 2 bytes)
