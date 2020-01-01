@@ -1,6 +1,6 @@
 # This file is part of libEXIF, a library to access stored data in picture.
 # coding: utf-8
-# (c) 2014-2015 G. Charbonneau
+# (c) 2014-2020 G. Charbonneau
 # Published under the terms of WtfPLv2
 
 $LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), "lib"))

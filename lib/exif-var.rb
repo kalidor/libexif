@@ -1,5 +1,5 @@
 # This file is part of libEXIF_VAR, a library to access stored data in picture.
-# (c) 2014-2015 G. Charbonneau
+# (c) 2014-2020 G. Charbonneau
 # Published under the terms of WtfPLv2
 
 BIG_ENDIAN = "MM\x00*"
