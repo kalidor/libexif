@@ -4,6 +4,7 @@
 # Published under the terms of WtfPLv2
 
 KNOWN_META = %w[ifd0 ifd1 ifd2 ifd3 exif gps]
+BLOCK = 8
 
 class PackSpec
   def initialize(endian)

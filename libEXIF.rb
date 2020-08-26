@@ -93,10 +93,9 @@ module REXIF
     end
 
     def detect_endianess
-      index = nil
-      block = 8
+      index = nil 
       until @io.pos > 100 or @endianess
-        c = @io.read(block)
+        c = @io.read(BLOCK)
         if index = c.index(LITTLE_ENDIAN)
           @endianess = :little
         elsif index = c.index(BIG_ENDIAN)
@@ -106,19 +105,25 @@ module REXIF
       if @endianess
         # move back to the previous position in case we read more bytes than
         # expected
-        @io.seek(-block+index+4, IO::SEEK_CUR)
+        @io.seek(-BLOCK+index+4, IO::SEEK_CUR)
       else
         raise "Cannot detect endianess"
       end
-      @packspec = PackSpec.new(@endianess)
       # we compute the tiff_header position (-4) (endianess x 2 + identifier)
       # in order to seek from here to the IFD0 offset
       @TIFF_header_offset = @io.pos - 4
+
       # we return the IFD0_ENTRIES offset by reading the next 4 bytes taking care
       # to the endianess
-      # This part is big-endian
-      # == @io.read(4).unpack("H*").first.scan(/(..)(..)(..)(..)/).map(&:reverse).join.to_i(16)
-      return @io.read(4).unpack("V*").first
+      ifd0_offset = @io.read(4)
+      if @endianess == :little
+        ifd0_offset = ifd0_offset.unpack("V*").first
+      else
+        ifd0_offset = ifd0_offset.unpack("H*").first.to_i(16)
+      end
+      # We need to declare PackSpec for the rest of the code
+      @packspec = PackSpec.new(@endianess)
+      return ifd0_offset
     end
 
     # Get the count of IFD entries (Read and convert 2 bytes)
@@ -130,7 +135,7 @@ module REXIF
     end
 
     def get_all_offsets(offset)
-      vputs "IFD0_entries offset: %s" % offset.to_s(16)
+      vputs "IFD0_entries offset: 0x%s" % offset.to_s(16)
       ifd_analyze(offset, @@DATA)
       # Usually the ExifOffset is present in the first part
       exif_analyze(offset, @@DATA) if @@DATA["IFD0"].has_key? "ExifOffset"
