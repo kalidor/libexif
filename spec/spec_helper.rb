@@ -33,4 +33,19 @@ EXPECTED_RESULTS = {
       "PlanarConfiguration" => "Chunky"
     }
   },
+  "tests/IMG_3529.jpg" => {
+    "endianess" => :little,
+    "ifd0" => {
+      "Make" => "Canon",
+      "Model" => "Canon EOS 60D",
+      "XResolution" => "240.00 (240)",
+      "YResolution" => "240.00 (240)",
+      "ResolutionUnit" => "Inches",
+      "Software" => "Adobe Photoshop Lightroom 5.0 (Macintosh)",
+      "ModifyDate" => "2015:04:25 21:51:28",
+      "Artist" => "Gregory Charbonneau",
+      "Copyright" => "2009-2013 - Some rights reserved",
+      "ExifOffset" => 286
+    }
+  }
 }

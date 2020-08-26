@@ -1,9 +1,9 @@
-require_relative '../libexif'
+require_relative '../libEXIF'
 require 'spec_helper'
 
 describe REXIF do
   before :all do
-    @files = ["tests/lena_std.tiff", "tests/sample.tiff"]
+    @files = ["tests/lena_std.tiff", "tests/sample.tiff", "tests/IMG_3529.jpg"]
 
   end
   before :each do
@@ -50,7 +50,7 @@ describe REXIF do
       it "Defined variables" do
         @data.map{|f, img|
           img.analyze()
-          img.infos.should == [:ifd0?]
+          expect(img.infos).to include(:ifd0?)
         }
       end
       it "ifd0? well defined (default: false, available: true)" do
