@@ -14,7 +14,9 @@ Only declared EXIF data (see *-var.rb in lib/) are supported. I will try to add 
 >img.analyze()
 ```
 
-#### interesting instance variables
+Take a look at example.rb script.
+
+#### Interesting instance variables
 ```ruby
 >img.filename   # filename...
 >img.endianess  # endianess (:big or :little)
@@ -42,6 +44,12 @@ true
 >img.ifd0.Model
 Canon EOS 6D
 # same idea for ifd1/2/3, exif, gps
+```
+
+Simpler way:
+
+```Ruby
+img.print
 ```
 
 Or you can do it dynamically:
