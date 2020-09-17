@@ -15,7 +15,7 @@ module REXIF
     include IFD
     include EXIF
     include GPS
-    attr_reader :gps, :ifd0, :ifd1, :ifd2, :ifd3, :exif
+    attr_reader :gps, :ifd0, :ifd1, :ifd2, :ifd3, :exif, :data
     attr_reader :verbose, :filename, :endianess
     def initialize(filename, verbose=false)
       if not File.exists?(filename)
@@ -46,6 +46,18 @@ module REXIF
       end
     end
 
+    # Display every information found
+    def print
+      @@DATA.map{|k,v|
+        @@DATA[k].map{|kk, vv|
+          puts "%{section}: %{var}: %{val}" % {
+            :section => k,
+            :var => kk,
+            :val => vv[:value]
+          }
+        }
+      }
+    end
 
     # self explained
     def has_thumbnail?
@@ -304,6 +316,7 @@ module REXIF
 
     # Generate instance variables name for each kind of info available in the picture
     def gen_instance_variables
+      # Not sure if the next 3 lines are used. Investigation will follow
       def infos
         @@DATA.keys.map{|c| (c.downcase+"?").to_sym}
       end
