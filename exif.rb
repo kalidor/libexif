@@ -3,7 +3,7 @@
 # (c) 2014-2020 G. Charbonneau
 # Published under the terms of WtfPLv2
 
-$LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), "lib"))
+$LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), "exif"))
 require 'time'
 %w[helper header-var flash-var exif-var ifd-var gps-var].map{|f|
   require f
