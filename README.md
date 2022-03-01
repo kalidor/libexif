@@ -8,6 +8,16 @@ Existing gem did not returned what I was looking for, so I decide to try to do m
 
 Only declared EXIF data (see *-var.rb in lib/) are supported. I will try to add more.
 
+### Installation
+
+```Bash
+$ gem build exif.gemspec
+$ gem install --user-install ./exif-0.X.gem # don't require root or sudo
+# Or
+$ sudo gem install exif-0.X.gem
+```
+
+
 ### Sample
 ```ruby
 >img = REXIF::IMG.new('my_picture.CR2')
