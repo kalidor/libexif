@@ -51,7 +51,12 @@ class Template
 end
 
 def puts(str)
-  STDOUT.write("%s\n" % str)
+  begin
+    STDOUT.write(str)
+    STDOUT.write("\n")
+  rescue
+    STDOUT.write("Cannot output\n")
+  end
 end
 def ddputs(str)
   puts "[D] %s" % str if $DEBUG

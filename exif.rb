@@ -46,6 +46,12 @@ module REXIF
       end
     end
 
+    def dimension
+      if !exif
+        return -42
+      end
+      return "%dx%d" % [exif.ExifImageWidth, exif.ExifImageHeight]
+    end
 
     # self explained
     def has_thumbnail?
@@ -151,7 +157,11 @@ module REXIF
         id, type, size, _data = readblock()
         key = entries.find{|k, v| v[:id] == id}
         if not key
-          ddputs "Don't know this id '%s'. Next" % id.to_s(16)
+          if id != nil
+            ddputs "Don't know this id '%s'. Next" % id.to_s(16)
+          else
+            ddputs "id is nil -> WTF??"
+          end
           next
         end
         key = key[0]
@@ -296,10 +306,14 @@ module REXIF
       # Bytes 2-3 Type
       # Bytes 4-7 Count
       # Bytes 8-11 Value Offset
-      return block[0..1].convert(@packspec, 3).first,
-        block[2..3].convert(@packspec, 3).first,
-        block[4..7].convert(@packspec, 3).first,
-        block[8..11]
+      ref = 0
+      if @endianess == :big
+        ref = 1
+      end
+      return block[0..1].convert(@packspec, 3).first, #id
+        block[2..3].convert(@packspec, 3).first, #type
+        block[4..7].convert(@packspec, 3)[ref], #size
+        block[8..11] #data
     end
 
     # Generate instance variables name for each kind of info available in the picture

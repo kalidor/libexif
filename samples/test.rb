@@ -1,7 +1,7 @@
 # coding: utf-8
 $LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), ".."))
 #$LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), "lib"))
-require 'libEXIF'
+require 'exif'
 require 'benchmark'
 
 def run(filename, bench=nil)
